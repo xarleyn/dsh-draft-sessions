@@ -113,6 +113,30 @@ describe("DraftStore", () => {
     });
   });
 
+  it("clears a materialization error after a successful rebind", async () => {
+    const path = await storageFile();
+    const store = new DraftStore({ storagePath: path, id: () => "draft-a" });
+    const created = await store.create({ workspaceId: "workspace-a" });
+    const failed = await store.update({
+      id: created.id,
+      expectedRevision: created.revision,
+      state: "error",
+      lastError: "temporary failure",
+    });
+
+    const recovered = await store.rebind({
+      id: failed.id,
+      expectedRevision: failed.revision,
+      sessionId: "session-new",
+    });
+
+    expect(recovered).toMatchObject({
+      state: "ready",
+      sessionId: "session-new",
+    });
+    expect(recovered.lastError).toBeUndefined();
+  });
+
   it("supports explicit title removal and deletion guards", async () => {
     const path = await storageFile();
     const store = new DraftStore({ storagePath: path, id: () => "draft-a" });

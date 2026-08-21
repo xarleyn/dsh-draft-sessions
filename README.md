@@ -5,7 +5,7 @@ Persistent, unsent future conversations for [DeepSeek Harness](https://github.co
 `dsh-draft-sessions` is building the Cursor-like workflow where you can prepare several independent tasks, leave them unsent, and return to each task later without starting an agent.
 
 > [!IMPORTANT]
-> This repository is an early alpha. The durable Host service and typed Client RPC are implemented. Sidebar and composer integration are the next milestone, so installing the package today does not yet add visible draft rows.
+> This repository is an early alpha. Durable storage, typed Client RPC, and blank Session creation/recovery are implemented. Sidebar and composer integration are still pending, so installing the package today does not yet add visible draft rows.
 
 [Русская версия](README.ru.md) · [Specification](SPEC.md) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md)
 
@@ -36,7 +36,8 @@ flowchart LR
 - Independent workspace ordering and a configurable per-workspace limit.
 - Optimistic revisions that reject stale browser writes.
 - Atomic same-directory writes and strict durable-file validation.
-- Recovery-friendly Session rebinding without changing draft text.
+- Distinct blank Session creation with the id persisted only after success.
+- Missing Session detection and recovery rebinding without changing draft text.
 - Unit coverage for persistence, concurrency, limits, deletion, and recovery.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.
@@ -90,11 +91,12 @@ The bundle inserts the `draft-sessions` Cordis row. Override it from the profile
 ```ts
 await ctx.remote.draftSessions.list({ workspaceId });
 
-await ctx.remote.draftSessions.create({
+await ctx.draftSessionLifecycle.create({
   workspaceId,
-  sessionId,
   text: "",
 });
+
+await ctx.draftSessionLifecycle.ensureShell(draft);
 
 await ctx.remote.draftSessions.update({
   id,
@@ -109,7 +111,7 @@ await ctx.remote.draftSessions.rebind({
 });
 ```
 
-All mutating calls return the next `revision`. A stale `expectedRevision` is rejected instead of silently overwriting another browser's edit.
+The lifecycle service owns blank Session creation and recovery. The lower-level Remote methods remain available for storage operations; all mutations return the next `revision`, and a stale `expectedRevision` is rejected instead of silently overwriting another browser's edit.
 
 ## Design boundaries
 

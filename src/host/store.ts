@@ -254,10 +254,12 @@ export class DraftStore {
         updatedAt: Math.max(this.now(), previous.updatedAt),
         revision: previous.revision + 1,
       };
+      const rebound = { ...next } as DraftSession & { lastError?: string };
+      delete rebound.lastError;
       const changed = [...current];
-      changed[index] = next;
+      changed[index] = rebound;
       await this.commit(changed);
-      return cloneDraft(next);
+      return cloneDraft(rebound);
     });
   }
 

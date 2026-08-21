@@ -34,7 +34,9 @@ Input and output codecs reject unknown or malformed boundary values. The Host se
 
 ### Session lifecycle bridge
 
-The next milestone will combine the store with `SessionRuntime.create({ workspaceId })`. It must never use Workspace connection semantics that intentionally reuse an existing blank Session: independent drafts require independent Session ids.
+`DraftSessionLifecycle` first persists a DraftRecord without a Session id, then calls `sessions.create({ workspaceId })`, and finally stores the returned id through `rebind`. A failed Session creation marks the record as an error but leaves its text durable. `ensureShell` and `reconcileWorkspace` compare stored ids with `sessions.list()` and create replacements for missing shells.
+
+The bridge never uses Workspace connection semantics that intentionally reuse an existing blank Session: independent drafts require independent Session ids. Optimistic revisions serialize competing recovery attempts, and a successful rebind clears an earlier materialization error.
 
 ### Composer bridge
 

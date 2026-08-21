@@ -4,6 +4,7 @@ const ID = "dsh-draft-sessions";
 const CLIENT_EXTERNALS = [
   "@deepseek-ai/cordis",
   "@deepseek-ai/dsh-api-gateway/client",
+  "@deepseek-ai/dsh-client-connection/client",
   "@deepseek-ai/dsh-typert-protocol",
 ];
 

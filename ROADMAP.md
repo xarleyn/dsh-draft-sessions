@@ -11,9 +11,9 @@
 
 ## Milestone 2 — blank Session lifecycle
 
-- [ ] Create a distinct Session with `sessions.create({ workspaceId })`
-- [ ] Persist `sessionId` only after successful creation
-- [ ] Detect missing Session shells and rebind replacements
+- [x] Create a distinct Session with `sessions.create({ workspaceId })`
+- [x] Persist `sessionId` only after successful creation
+- [x] Detect missing Session shells and rebind replacements
 - [ ] Observe `blank: true → false` and finalize only after accepted Send
 - [ ] Preserve drafts after rejected Send
 

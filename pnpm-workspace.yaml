@@ -1,4 +1,14 @@
 packages:
   - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+
+# DSH next releases move as one pinned package family. Allow that trusted
+# scope through pnpm 11's default 24-hour quarantine while retaining the
+# minimum-release-age policy for every other dependency.
+minimumReleaseAgeExclude:
+  - "@deepseek-ai/*"
+
 allowBuilds:
   esbuild: true

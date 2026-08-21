@@ -98,5 +98,5 @@ draft → Send → prompt accepted → blank becomes false
 | Strict Client Remote contract     | Implemented |
 | Backing Session lifecycle         | Implemented |
 | Composer restore/autosave         | Implemented |
-| Draft-aware workspace sidebar     | Planned     |
+| Draft-aware workspace sidebar     | Partial     |
 | Browser/Host E2E coverage         | Planned     |

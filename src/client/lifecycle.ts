@@ -15,6 +15,7 @@ import type {
   DraftSession,
   UpdateDraftRequest,
 } from "../shared/types.js";
+import type { DraftSidebarSource } from "./sidebar.js";
 
 type DraftSessionsRemote = TypertRemoteNamespace<"draftSessions">;
 type SessionsApi = Pick<IApiClient["sessions"], "create" | "list">;
@@ -67,6 +68,7 @@ export interface DraftSessionLifecycleOptions {
   readonly drafts: DraftSessionsRemote;
   readonly sessions: SessionsApi;
   readonly envelopes?: ApiEnvelopeSource;
+  readonly sidebar?: Pick<DraftSidebarSource, "accept" | "remove">;
 }
 
 const MAX_PENDING_PROMPTS = 1_000;
@@ -103,6 +105,8 @@ function promptAccepted(value: unknown): boolean {
 export class DraftSessionLifecycle extends Service {
   private readonly drafts: DraftSessionsRemote;
   private readonly sessions: SessionsApi;
+  private readonly sidebar:
+    Pick<DraftSidebarSource, "accept" | "remove"> | undefined;
   private readonly pendingPrompts = new Map<string, string>();
   private observationQueue = Promise.resolve();
 
@@ -110,6 +114,7 @@ export class DraftSessionLifecycle extends Service {
     super(ctx, "draftSessionLifecycle");
     this.drafts = options?.drafts ?? ctx.remote.draftSessions;
     this.sessions = options?.sessions ?? ctx.connection.api.sessions;
+    this.sidebar = options?.sidebar;
     const envelopes =
       options?.envelopes ??
       (options === undefined ? envelopeSource(ctx.connection.api) : undefined);
@@ -142,6 +147,7 @@ export class DraftSessionLifecycle extends Service {
       }),
       "draft-create",
     );
+    this.sidebar?.accept(created);
     return this.materialize(created);
   }
 
@@ -229,6 +235,7 @@ export class DraftSessionLifecycle extends Service {
       "draft-update",
       { draft },
     );
+    this.sidebar?.accept(materializing);
 
     let response: Awaited<ReturnType<SessionsApi["create"]>>;
     try {
@@ -259,7 +266,7 @@ export class DraftSessionLifecycle extends Service {
     }
 
     const sessionId = String(response.result.value.sessionId);
-    return this.remoteValue(
+    const rebound = this.remoteValue(
       await this.drafts.rebind({
         id: materializing.id,
         expectedRevision: materializing.revision,
@@ -268,6 +275,8 @@ export class DraftSessionLifecycle extends Service {
       "draft-rebind",
       { draft: materializing, sessionId },
     );
+    this.sidebar?.accept(rebound);
+    return rebound;
   }
 
   private async markFailed(
@@ -281,11 +290,13 @@ export class DraftSessionLifecycle extends Service {
       lastError: message.trim() === "" ? "Session creation failed" : message,
     };
     const result = await this.drafts.update(request);
-    return result.ok ? result.value : draft;
+    const failed = result.ok ? result.value : draft;
+    this.sidebar?.accept(failed);
+    return failed;
   }
 
   private async deleteDraft(draft: DraftSession): Promise<boolean> {
-    return this.remoteValue(
+    const deleted = this.remoteValue(
       await this.drafts.delete({
         id: draft.id,
         expectedRevision: draft.revision,
@@ -293,6 +304,8 @@ export class DraftSessionLifecycle extends Service {
       "draft-delete",
       { draft },
     ).deleted;
+    if (deleted) this.sidebar?.remove(draft.id);
+    return deleted;
   }
 
   private observeEnvelopes(batch: readonly RpcMessage[]): void {

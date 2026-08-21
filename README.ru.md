@@ -5,7 +5,7 @@
 Цель плагина — дать привычный по Cursor UX: можно подготовить несколько независимых задач, уйти из них без отправки и позже продолжить каждую с сохранённым текстом.
 
 > [!IMPORTANT]
-> Сейчас это ранняя alpha-версия. Уже реализованы Host-хранилище, типизированный RPC и создание/восстановление blank Session, но sidebar и composer ещё не подключены. Поэтому установленный пакет пока не добавляет видимые draft-строки.
+> Сейчас это ранняя alpha-версия. Уже реализованы Host-хранилище, восстановление blank Session, autosave composer и draft-first строки в sidebar. Отдельный muted-стиль и финальная семантика context menu/клавиатуры ещё в работе.
 
 [English](README.md) · [Спецификация](SPEC.md) · [Архитектура](docs/architecture.md) · [План](ROADMAP.md)
 
@@ -23,6 +23,8 @@
 - Точное восстановление текста через официальный per-session InputHub.
 - Debounced optimistic autosave с обязательным flush перед переключением.
 - Создание через `Ctrl/Cmd + Shift + N` в текущем или недавнем Workspace.
+- Draft-shell строки перед обычными Sessions через pinned upstream workspace browser.
+- Безопасный fallback к штатному browser, если replacement нельзя активировать.
 - Unit-тесты persistence, concurrency, limits, deletion и recovery.
 
 Текущий код не отправляет prompt, не изменяет историю обычных Sessions и не удаляет blank Sessions.

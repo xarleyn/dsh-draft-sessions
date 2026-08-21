@@ -11,6 +11,7 @@ import type {
 } from "@deepseek-ai/dsh-typert-protocol";
 import type { DraftSession } from "../shared/types.js";
 import type { DraftSessionLifecycle } from "./lifecycle.js";
+import type { DraftSidebarSource } from "./sidebar.js";
 
 type DraftSessionsRemote = TypertRemoteNamespace<"draftSessions">;
 type ComposerInput = ReturnType<IConversation["input"]["for"]>;
@@ -29,6 +30,7 @@ export interface DraftComposerBridgeOptions {
   readonly drafts: DraftSessionsRemote;
   readonly sessions: Pick<ISessions, "open" | "scope">;
   readonly conversation: Pick<IConversation, "input">;
+  readonly sidebar?: Pick<DraftSidebarSource, "accept">;
   readonly debounceMs?: number;
 }
 
@@ -65,6 +67,7 @@ export class DraftComposerBridge extends Service {
   private readonly sessions: Pick<ISessions, "open" | "scope">;
   private readonly conversation: Pick<IConversation, "input">;
   private readonly debounceMs: number;
+  private readonly sidebar: Pick<DraftSidebarSource, "accept"> | undefined;
   private active: ActiveDraft | undefined;
   private saveQueue = Promise.resolve();
 
@@ -74,6 +77,7 @@ export class DraftComposerBridge extends Service {
     this.drafts = options?.drafts ?? ctx.remote.draftSessions;
     this.sessions = options?.sessions ?? ctx.sessions;
     this.conversation = options?.conversation ?? ctx.conversation;
+    this.sidebar = options?.sidebar;
     this.debounceMs = debounceDelay(options?.debounceMs);
     ctx.effect(
       () => () => {
@@ -192,6 +196,7 @@ export class DraftComposerBridge extends Service {
         throw error;
       }
       active.draft = result.value;
+      this.sidebar?.accept(active.draft);
       active.savingText = undefined;
       const liveText = active.input.state.getSnapshot().draft;
       if (active.pendingText === undefined && liveText !== active.draft.text) {

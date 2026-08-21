@@ -1,3 +1,9 @@
+import { Service, type Context } from "@deepseek-ai/cordis";
+import type {
+  SessionId,
+  SessionListState,
+  WorkspaceListState,
+} from "@deepseek-ai/dsh-client-runtime/client";
 import type { UpdateDraftRequest } from "../shared/types.js";
 import { displayDraftTitle, type DraftSession } from "../shared/types.js";
 
@@ -21,6 +27,74 @@ export interface SessionSidebarNode {
 
 export type SidebarNode = DraftSidebarNode | SessionSidebarNode;
 
+type DraftListRemote = {
+  list(request: {
+    workspaceId?: string;
+  }): Promise<
+    | { ok: true; value: DraftSession[] }
+    | { ok: false; error: { message: string } }
+  >;
+};
+
+/** Observable Host-backed draft list used by the workspace replacement. */
+export class DraftSidebarSource extends Service {
+  private readonly drafts: DraftListRemote;
+  private snapshot: readonly DraftSession[] = [];
+  private readonly listeners = new Set<() => void>();
+  private generation = 0;
+
+  constructor(ctx: Context, drafts?: DraftListRemote) {
+    super(ctx, "draftSidebarSource");
+    this.drafts = drafts ?? ctx.remote.draftSessions;
+    const refresh = () => {
+      void this.refresh().catch((error: unknown) => {
+        console.error("draft sidebar refresh failed", error);
+      });
+    };
+    ctx.effect(
+      () => ctx.sessions.list.subscribe(refresh),
+      "draft-sidebar.sessions",
+    );
+    ctx.effect(
+      () => ctx.workspaces.list.subscribe(refresh),
+      "draft-sidebar.workspaces",
+    );
+    refresh();
+  }
+
+  getSnapshot = (): readonly DraftSession[] => this.snapshot;
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  async refresh(): Promise<readonly DraftSession[]> {
+    const generation = ++this.generation;
+    const result = await this.drafts.list({});
+    if (!result.ok) throw new Error(result.error.message);
+    if (generation === this.generation) this.publish(result.value);
+    return this.snapshot;
+  }
+
+  accept(draft: DraftSession): void {
+    const next = this.snapshot.filter((item) => item.id !== draft.id);
+    next.push(draft);
+    this.generation += 1;
+    this.publish(next);
+  }
+
+  remove(draftId: string): void {
+    this.generation += 1;
+    this.publish(this.snapshot.filter((draft) => draft.id !== draftId));
+  }
+
+  private publish(next: readonly DraftSession[]): void {
+    this.snapshot = [...next];
+    for (const listener of this.listeners) listener();
+  }
+}
+
 export interface ProjectWorkspaceSidebarOptions {
   readonly workspaceId: string;
   readonly drafts: readonly DraftSession[];
@@ -36,6 +110,58 @@ function orderedDrafts(drafts: readonly DraftSession[]): DraftSession[] {
       left.order - right.order ||
       left.id.localeCompare(right.id),
   );
+}
+
+export function projectDraftSessions(
+  state: SessionListState,
+  drafts: readonly DraftSession[],
+): SessionListState {
+  const byId = { ...state.byId };
+  let changed = false;
+  for (const draft of drafts) {
+    if (draft.sessionId === null) continue;
+    const id = draft.sessionId as SessionId;
+    const summary = byId[id];
+    if (summary === undefined) continue;
+    const title = displayDraftTitle(draft) || "Untitled draft";
+    byId[id] = {
+      ...summary,
+      blank: false,
+      displayTitle: `${title} · Draft`,
+      updatedAt: draft.updatedAt,
+    };
+    changed = true;
+  }
+  return changed ? { ...state, byId } : state;
+}
+
+export function projectDraftWorkspaces(
+  state: WorkspaceListState,
+  drafts: readonly DraftSession[],
+): WorkspaceListState {
+  const shellIds = new Set(
+    drafts.flatMap((draft) =>
+      draft.sessionId === null ? [] : [draft.sessionId],
+    ),
+  );
+  const items = state.items.map((workspace) => {
+    const leading = orderedDrafts(
+      drafts.filter((draft) => draft.workspaceId === workspace.workspaceId),
+    )
+      .filter(
+        (draft): draft is DraftSession & { sessionId: string } =>
+          draft.sessionId !== null,
+      )
+      .map((draft) => draft.sessionId as SessionId);
+    return {
+      ...workspace,
+      sessionIds: [
+        ...leading,
+        ...workspace.sessionIds.filter((id: SessionId) => !shellIds.has(id)),
+      ],
+    };
+  });
+  return { ...state, items };
 }
 
 /** Draft-first Workspace rows without duplicate backing blank Sessions. */

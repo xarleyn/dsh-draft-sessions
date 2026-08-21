@@ -56,6 +56,8 @@ The replacement contract is pinned to `@deepseek-ai/dsh-client-ui-workspace@0.1.
 
 The draft-aware projection places pinned and manually ordered DraftRecords before ordinary Session ids, removes their backing blank Session ids from the ordinary rows, and retains shell-less or errored drafts as actionable rows. Reorder planning normalizes the draft account to stable zero-based positions and carries each record's optimistic revision.
 
+The bundle disables the stock `ui-workspace` Cordis row and invokes that exact pinned package through a narrow registration proxy. The proxy reuses the upstream browser component, store, locale, directory-flow child slot, search, dialogs, and every ordinary Session callback; only the Session/Workspace selector hooks and actions addressing known draft shell ids are adapted. If the stock row is already active, or its registration no longer matches the pinned contract, the plugin skips adaptation or registers the untouched upstream component. The sidebar therefore degrades to normal DSH behavior instead of leaving its single-occupant slot empty.
+
 ## Recovery rules
 
 | Condition                              | Action                              |

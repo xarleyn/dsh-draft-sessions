@@ -5,7 +5,7 @@ Persistent, unsent future conversations for [DeepSeek Harness](https://github.co
 `dsh-draft-sessions` is building the Cursor-like workflow where you can prepare several independent tasks, leave them unsent, and return to each task later without starting an agent.
 
 > [!IMPORTANT]
-> This repository is an early alpha. Durable storage, typed Client RPC, and blank Session creation/recovery are implemented. Sidebar and composer integration are still pending, so installing the package today does not yet add visible draft rows.
+> This repository is an early alpha. Durable storage, blank Session recovery, composer autosave, and draft-first sidebar rows are implemented. Dedicated muted row styling and final context-menu/keyboard behavior are still pending.
 
 [Русская версия](README.ru.md) · [Specification](SPEC.md) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md)
 
@@ -43,6 +43,8 @@ flowchart LR
 - Exact composer restore through the official per-session InputHub facade.
 - Debounced optimistic autosave with a mandatory pre-switch flush.
 - `Ctrl/Cmd + Shift + N` creation in the current or recent Workspace.
+- Draft shells projected before ordinary Session rows through the pinned upstream workspace browser.
+- Compatibility fallback to the untouched upstream browser when replacement activation is unsafe.
 - Unit coverage for persistence, concurrency, limits, deletion, and recovery.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.

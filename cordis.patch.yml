@@ -1,4 +1,6 @@
 # The DSH plugin manager discovers this bundle through package.json.
+- id: ui-workspace
+  disabled: true
 - insert:
     - id: draft-sessions
       name: dsh-draft-sessions

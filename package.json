@@ -87,11 +87,11 @@
     "@deepseek-ai/dsh-typert-protocol": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-registry": "0.1.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.1",
-    "@types/node": "^24.2.1",
+    "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^4.1.8",
     "prettier": "^3.6.2",
     "tsdown": "^0.22.2",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.8"
   },
   "publishConfig": {

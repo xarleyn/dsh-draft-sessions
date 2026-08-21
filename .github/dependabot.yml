@@ -1,14 +1,38 @@
 version: 2
+
+# Keep routine maintenance quiet: Dependabot opens one combined pull request
+# for npm packages and GitHub Actions on the first day of each month.
+multi-ecosystem-groups:
+  routine-updates:
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Europe/Moscow
+
 updates:
   - package-ecosystem: npm
     directory: /
-    schedule:
-      interval: weekly
-    groups:
-      development-dependencies:
-        dependency-type: development
+    patterns:
+      - "*"
+    multi-ecosystem-group: routine-updates
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 7
+    ignore:
+      # Breaking upgrades are deliberate maintenance work, not routine updates.
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
+    patterns:
+      - "*"
+    multi-ecosystem-group: routine-updates
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major

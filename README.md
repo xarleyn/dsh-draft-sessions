@@ -38,6 +38,8 @@ flowchart LR
 - Atomic same-directory writes and strict durable-file validation.
 - Distinct blank Session creation with the id persisted only after success.
 - Missing Session detection and recovery rebinding without changing draft text.
+- Accepted-Send observation with finalization only after `blank: false`.
+- Rejected Send and blank slash-command preservation.
 - Unit coverage for persistence, concurrency, limits, deletion, and recovery.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.

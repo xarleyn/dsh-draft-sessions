@@ -2,6 +2,7 @@ import { Service, type Context } from "@deepseek-ai/cordis";
 import type {
   IApiClient,
   RpcError,
+  RpcMessage,
   WorkspaceId,
 } from "@deepseek-ai/dsh-client-connection/client";
 import type {
@@ -18,12 +19,19 @@ import type {
 type DraftSessionsRemote = TypertRemoteNamespace<"draftSessions">;
 type SessionsApi = Pick<IApiClient["sessions"], "create" | "list">;
 
+interface ApiEnvelopeSource {
+  subscribeEnvelopes(
+    listener: (batch: readonly RpcMessage[]) => void,
+  ): () => void;
+}
+
 export type CreateManagedDraftRequest = Omit<CreateDraftRequest, "sessionId">;
 
 export type DraftLifecycleStage =
   | "draft-create"
   | "draft-list"
   | "draft-update"
+  | "draft-delete"
   | "session-list"
   | "session-create"
   | "draft-rebind";
@@ -58,6 +66,32 @@ export class DraftLifecycleError extends Error {
 export interface DraftSessionLifecycleOptions {
   readonly drafts: DraftSessionsRemote;
   readonly sessions: SessionsApi;
+  readonly envelopes?: ApiEnvelopeSource;
+}
+
+const MAX_PENDING_PROMPTS = 1_000;
+
+function envelopeSource(api: IApiClient): ApiEnvelopeSource | undefined {
+  const candidate = api as IApiClient & Partial<ApiEnvelopeSource>;
+  return typeof candidate.subscribeEnvelopes === "function"
+    ? candidate
+    : undefined;
+}
+
+function promptSessionId(payload: unknown): string | undefined {
+  if (typeof payload !== "object" || payload === null) return undefined;
+  const sessionId = Reflect.get(payload, "sessionId");
+  return typeof sessionId === "string" && sessionId !== ""
+    ? sessionId
+    : undefined;
+}
+
+function promptAccepted(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Reflect.get(value, "accepted") === true
+  );
 }
 
 /**
@@ -69,11 +103,25 @@ export interface DraftSessionLifecycleOptions {
 export class DraftSessionLifecycle extends Service {
   private readonly drafts: DraftSessionsRemote;
   private readonly sessions: SessionsApi;
+  private readonly pendingPrompts = new Map<string, string>();
+  private observationQueue = Promise.resolve();
 
   constructor(ctx: Context, options?: DraftSessionLifecycleOptions) {
     super(ctx, "draftSessionLifecycle");
     this.drafts = options?.drafts ?? ctx.remote.draftSessions;
     this.sessions = options?.sessions ?? ctx.connection.api.sessions;
+    const envelopes =
+      options?.envelopes ??
+      (options === undefined ? envelopeSource(ctx.connection.api) : undefined);
+    if (envelopes !== undefined) {
+      ctx.effect(
+        () =>
+          envelopes.subscribeEnvelopes((batch) => {
+            this.observeEnvelopes(batch);
+          }),
+        "draft-sessions.observe-prompts",
+      );
+    }
   }
 
   /** Create a durable draft and give it a distinct blank Session shell. */
@@ -125,20 +173,49 @@ export class DraftSessionLifecycle extends Service {
     if (!response.result.ok) {
       throw this.apiError("session-list", response.result.error);
     }
-    const existing = new Set(
+    const existing = new Map(
       response.result.value.items.map(
-        (session: { readonly sessionId: unknown }) => String(session.sessionId),
+        (session: { readonly sessionId: unknown; readonly blank: unknown }) => [
+          String(session.sessionId),
+          session.blank !== false,
+        ],
       ),
     );
     const reconciled: DraftSession[] = [];
     for (const draft of drafts) {
-      reconciled.push(
-        draft.sessionId !== null && existing.has(draft.sessionId)
-          ? draft
-          : await this.materialize(draft),
-      );
+      const blank =
+        draft.sessionId === null ? undefined : existing.get(draft.sessionId);
+      if (blank === false) {
+        await this.deleteDraft(draft);
+      } else {
+        reconciled.push(blank === true ? draft : await this.materialize(draft));
+      }
     }
     return reconciled;
+  }
+
+  /**
+   * Finalize drafts for an accepted prompt only after DSH reports the Session
+   * as nonblank. Returns false while the transition is not yet observable.
+   */
+  async finalizeAcceptedSession(sessionId: string): Promise<boolean> {
+    const response = await this.sessions.list({});
+    if (!response.result.ok) {
+      throw this.apiError("session-list", response.result.error);
+    }
+    const materialized = response.result.value.items.some(
+      (session: { readonly sessionId: unknown; readonly blank: unknown }) =>
+        session.sessionId === sessionId && session.blank === false,
+    );
+    if (!materialized) return false;
+
+    const drafts = this.remoteValue(await this.drafts.list({}), "draft-list");
+    let deleted = false;
+    for (const draft of drafts) {
+      if (draft.sessionId !== sessionId) continue;
+      deleted = (await this.deleteDraft(draft)) || deleted;
+    }
+    return deleted;
   }
 
   private async materialize(draft: DraftSession): Promise<DraftSession> {
@@ -205,6 +282,55 @@ export class DraftSessionLifecycle extends Service {
     };
     const result = await this.drafts.update(request);
     return result.ok ? result.value : draft;
+  }
+
+  private async deleteDraft(draft: DraftSession): Promise<boolean> {
+    return this.remoteValue(
+      await this.drafts.delete({
+        id: draft.id,
+        expectedRevision: draft.revision,
+      }),
+      "draft-delete",
+      { draft },
+    ).deleted;
+  }
+
+  private observeEnvelopes(batch: readonly RpcMessage[]): void {
+    for (const message of batch) {
+      const rpcId = String(message.rpcId);
+      if (
+        message.type === "client-request" &&
+        message.method === "session.prompt"
+      ) {
+        const sessionId = promptSessionId(message.payload);
+        if (sessionId === undefined) continue;
+        this.pendingPrompts.set(rpcId, sessionId);
+        while (this.pendingPrompts.size > MAX_PENDING_PROMPTS) {
+          const oldest = this.pendingPrompts.keys().next().value as
+            string | undefined;
+          if (oldest === undefined) break;
+          this.pendingPrompts.delete(oldest);
+        }
+        continue;
+      }
+      if (message.type !== "server-response") continue;
+      const sessionId = this.pendingPrompts.get(rpcId);
+      if (sessionId === undefined) continue;
+      this.pendingPrompts.delete(rpcId);
+      if (!message.result.ok || !promptAccepted(message.result.value)) continue;
+      this.enqueueObservation(() => this.finalizeAcceptedSession(sessionId));
+    }
+  }
+
+  private enqueueObservation(operation: () => Promise<unknown>): void {
+    const result = this.observationQueue.then(operation, operation);
+    this.observationQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    void result.catch((error: unknown) => {
+      console.error("draft session finalization failed", error);
+    });
   }
 
   private remoteValue<T>(

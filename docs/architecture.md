@@ -38,6 +38,8 @@ Input and output codecs reject unknown or malformed boundary values. The Host se
 
 The bridge never uses Workspace connection semantics that intentionally reuse an existing blank Session: independent drafts require independent Session ids. Optimistic revisions serialize competing recovery attempts, and a successful rebind clears an earlier materialization error.
 
+The lifecycle observes the public API client's RPC envelopes and correlates `session.prompt` requests with their responses by `rpcId`. A successful response schedules finalization, but the DraftRecord is deleted only after `sessions.list()` reports that exact Session as `blank: false`. A rejected response does nothing. Workspace reconciliation applies the same monotonic `blank: false` proof after reload or reconnect, when the original response envelope is no longer available.
+
 ### Composer bridge
 
 Opening a draft will first open its backing Session, then restore text through DSH's official composer draft API. Autosave will debounce ordinary edits but flush before navigation so text from two Sessions cannot cross.

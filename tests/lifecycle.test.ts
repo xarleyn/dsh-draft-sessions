@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Context } from "@deepseek-ai/cordis";
+import type { RpcMessage } from "@deepseek-ai/dsh-client-connection/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DraftSessionLifecycle,
@@ -58,6 +59,26 @@ function sessions(
         result: { ok: true, value: { sessionId: "session-new" } },
       }) as never,
     ...overrides,
+  };
+}
+
+function envelopeObserver(): {
+  readonly source: NonNullable<DraftSessionLifecycleOptions["envelopes"]>;
+  emit(batch: readonly RpcMessage[]): void;
+} {
+  let listener: ((batch: readonly RpcMessage[]) => void) | undefined;
+  return {
+    source: {
+      subscribeEnvelopes(next) {
+        listener = next;
+        return () => {
+          listener = undefined;
+        };
+      },
+    },
+    emit(batch) {
+      listener?.(batch);
+    },
   };
 }
 
@@ -203,5 +224,173 @@ describe("DraftSessionLifecycle", () => {
 
     await expect(lifecycle.ensureShell(current)).resolves.toBe(current);
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("finalizes a draft after an accepted prompt makes its Session nonblank", async () => {
+    const drafts = await store();
+    await drafts.create({
+      workspaceId: "workspace-a",
+      sessionId: "session-current",
+      text: "send me",
+    });
+    const observed = envelopeObserver();
+    const lifecycle = new DraftSessionLifecycle(new Context(), {
+      drafts: remote(drafts),
+      sessions: sessions({
+        list: async () =>
+          ({
+            rpcId: "rpc-list",
+            result: {
+              ok: true,
+              value: {
+                items: [
+                  {
+                    sessionId: "session-current",
+                    updatedAt: 1_001,
+                    running: true,
+                    blank: false,
+                  },
+                ],
+              },
+            },
+          }) as never,
+      }),
+      envelopes: observed.source,
+    });
+
+    expect(lifecycle).toBeDefined();
+    observed.emit([
+      {
+        type: "client-request",
+        rpcId: "rpc-prompt",
+        method: "session.prompt",
+        payload: {
+          sessionId: "session-current",
+          mode: "queue",
+          content: [{ type: "text", text: "send me" }],
+        },
+      } as never,
+      {
+        type: "server-response",
+        rpcId: "rpc-prompt",
+        result: { ok: true, value: { accepted: true } },
+      } as never,
+    ]);
+
+    await vi.waitFor(async () => {
+      expect(await drafts.list()).toHaveLength(0);
+    });
+  });
+
+  it("preserves a draft after a rejected prompt", async () => {
+    const drafts = await store();
+    const current = await drafts.create({
+      workspaceId: "workspace-a",
+      sessionId: "session-current",
+      text: "do not lose me",
+    });
+    const observed = envelopeObserver();
+    const list = vi.fn();
+    new DraftSessionLifecycle(new Context(), {
+      drafts: remote(drafts),
+      sessions: sessions({ list }),
+      envelopes: observed.source,
+    });
+
+    observed.emit([
+      {
+        type: "client-request",
+        rpcId: "rpc-prompt",
+        method: "session.prompt",
+        payload: { sessionId: "session-current" },
+      } as never,
+      {
+        type: "server-response",
+        rpcId: "rpc-prompt",
+        result: {
+          ok: false,
+          error: {
+            code: "agent-busy",
+            message: "prompt rejected before acceptance",
+            details: { reason: "busy" },
+          },
+        },
+      } as never,
+    ]);
+    await Promise.resolve();
+
+    expect(list).not.toHaveBeenCalled();
+    expect(await drafts.list()).toEqual([current]);
+  });
+
+  it("keeps an accepted command draft while its Session remains blank", async () => {
+    const drafts = await store();
+    const current = await drafts.create({
+      workspaceId: "workspace-a",
+      sessionId: "session-current",
+      text: "/help",
+    });
+    const lifecycle = new DraftSessionLifecycle(new Context(), {
+      drafts: remote(drafts),
+      sessions: sessions({
+        list: async () =>
+          ({
+            rpcId: "rpc-list",
+            result: {
+              ok: true,
+              value: {
+                items: [
+                  {
+                    sessionId: "session-current",
+                    updatedAt: 1_001,
+                    running: false,
+                    blank: true,
+                  },
+                ],
+              },
+            },
+          }) as never,
+      }),
+    });
+
+    await expect(
+      lifecycle.finalizeAcceptedSession("session-current"),
+    ).resolves.toBe(false);
+    expect(await drafts.list()).toEqual([current]);
+  });
+
+  it("finalizes an already nonblank Session during reload reconciliation", async () => {
+    const drafts = await store();
+    await drafts.create({
+      workspaceId: "workspace-a",
+      sessionId: "session-current",
+    });
+    const lifecycle = new DraftSessionLifecycle(new Context(), {
+      drafts: remote(drafts),
+      sessions: sessions({
+        list: async () =>
+          ({
+            rpcId: "rpc-list",
+            result: {
+              ok: true,
+              value: {
+                items: [
+                  {
+                    sessionId: "session-current",
+                    updatedAt: 1_001,
+                    running: false,
+                    blank: false,
+                  },
+                ],
+              },
+            },
+          }) as never,
+      }),
+    });
+
+    await expect(lifecycle.reconcileWorkspace("workspace-a")).resolves.toEqual(
+      [],
+    );
+    expect(await drafts.list()).toEqual([]);
   });
 });

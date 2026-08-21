@@ -10,4 +10,5 @@ All notable changes will be documented here. The project follows [Semantic Versi
 - CRUD, ordering, per-Workspace limits, recovery rebinding, and optimistic revisions.
 - Strict Typert Remote contribution for the Web client.
 - Client lifecycle bridge for distinct blank Session creation and missing-shell recovery.
+- Accepted-prompt observation and blank-to-materialized DraftRecord finalization.
 - Initial tests, architecture documentation, specification, roadmap, and CI.

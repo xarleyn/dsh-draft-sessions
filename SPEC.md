@@ -96,7 +96,7 @@ draft → Send → prompt accepted → blank becomes false
 | Durable schema and JSON store     | Implemented |
 | CRUD, ordering, limits, revisions | Implemented |
 | Strict Client Remote contract     | Implemented |
-| Backing Session lifecycle         | In progress |
+| Backing Session lifecycle         | Implemented |
 | Composer restore/autosave         | Planned     |
 | Draft-aware workspace sidebar     | Planned     |
 | Browser/Host E2E coverage         | Planned     |

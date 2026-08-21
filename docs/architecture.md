@@ -54,6 +54,8 @@ The stock workspace browser intentionally hides every blank Session except the c
 
 The replacement contract is pinned to `@deepseek-ai/dsh-client-ui-workspace@0.1.1-rc.2` in `compatibility.json`. The package smoke gate resolves the installed manifest and fails on a mismatch so an upstream presentation change cannot silently activate an unreviewed replacement.
 
+The draft-aware projection places pinned and manually ordered DraftRecords before ordinary Session ids, removes their backing blank Session ids from the ordinary rows, and retains shell-less or errored drafts as actionable rows. Reorder planning normalizes the draft account to stable zero-based positions and carries each record's optimistic revision.
+
 ## Recovery rules
 
 | Condition                              | Action                              |

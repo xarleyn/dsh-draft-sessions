@@ -17,6 +17,7 @@ import { DraftShortcutController } from "./shortcut.js";
 export type * from "../shared/types.js";
 export * from "./composer.js";
 export * from "./lifecycle.js";
+export * from "./sidebar.js";
 export * from "./shortcut.js";
 
 declare module "@deepseek-ai/cordis" {

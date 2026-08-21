@@ -40,6 +40,8 @@ flowchart LR
 - Missing Session detection and recovery rebinding without changing draft text.
 - Accepted-Send observation with finalization only after `blank: false`.
 - Rejected Send and blank slash-command preservation.
+- Exact composer restore through the official per-session InputHub facade.
+- Debounced optimistic autosave with a mandatory pre-switch flush.
 - Unit coverage for persistence, concurrency, limits, deletion, and recovery.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.
@@ -99,6 +101,9 @@ await ctx.draftSessionLifecycle.create({
 });
 
 await ctx.draftSessionLifecycle.ensureShell(draft);
+
+await ctx.draftComposerBridge.open(draft);
+await ctx.draftComposerBridge.flush();
 
 await ctx.remote.draftSessions.update({
   id,

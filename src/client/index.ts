@@ -3,25 +3,33 @@ import type {
   ConnectionHandle,
   IApiClient,
 } from "@deepseek-ai/dsh-client-connection/client";
+import type { ISessions } from "@deepseek-ai/dsh-client-runtime/client";
+import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/client";
 import type {} from "@deepseek-ai/dsh-api-gateway/client";
 import draftSessionsRemote from "../remote.js";
+import { DraftComposerBridge } from "./composer.js";
 import { DraftSessionLifecycle } from "./lifecycle.js";
 
 export type * from "../shared/types.js";
+export * from "./composer.js";
 export * from "./lifecycle.js";
 
 declare module "@deepseek-ai/cordis" {
   interface Context {
     connection: ConnectionHandle & { readonly api: IApiClient };
+    sessions: ISessions;
+    conversation: IConversation;
     draftSessionLifecycle: DraftSessionLifecycle;
+    draftComposerBridge: DraftComposerBridge;
   }
 }
 
-export const inject = ["remote", "connection"];
+export const inject = ["remote", "connection", "sessions", "conversation"];
 
 /** Mount the strict Remote namespace and its blank-Session lifecycle bridge. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const dispose = await ctx.remote.$mount(draftSessionsRemote);
   new DraftSessionLifecycle(ctx);
+  new DraftComposerBridge(ctx);
   return dispose;
 }

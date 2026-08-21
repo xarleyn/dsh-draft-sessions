@@ -42,7 +42,9 @@ The lifecycle observes the public API client's RPC envelopes and correlates `ses
 
 ### Composer bridge
 
-Opening a draft will first open its backing Session, then restore text through DSH's official composer draft API. Autosave will debounce ordinary edits but flush before navigation so text from two Sessions cannot cross.
+`DraftComposerBridge.open` first flushes and detaches the previous draft, ensures the target Session shell, opens it through the runtime, and restores the exact Host text through `conversation.input.for(scope).setDraft()`. It then subscribes to the official per-session input state.
+
+Ordinary edits use a 350 ms debounce and serialized optimistic `draftSessions.update` calls. An edit arriving during an in-flight save is sent with the revision returned by that save. Navigation waits for the queue to drain before opening another Session; a remote revision conflict is shown through the owning composer and blocks the switch, so text from two drafts cannot cross.
 
 ### Workspace browser replacement
 

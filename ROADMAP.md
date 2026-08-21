@@ -19,10 +19,10 @@
 
 ## Milestone 3 — composer bridge
 
-- [ ] Restore text through the official InputHub/input actions
-- [ ] Debounced optimistic autosave
-- [ ] Flush pending autosave before switching Sessions
-- [ ] Surface remote revision conflicts
+- [x] Restore text through the official InputHub/input actions
+- [x] Debounced optimistic autosave
+- [x] Flush pending autosave before switching Sessions
+- [x] Surface remote revision conflicts
 - [ ] Add `Ctrl/Cmd + Shift + N`
 
 ## Milestone 4 — sidebar integration

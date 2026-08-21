@@ -31,7 +31,8 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-api-gateway"
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-client-ui-conversation"
       ],
       "platform": "web"
     }
@@ -76,6 +77,8 @@
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-api-gateway": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-client-connection": ">=0.1.1-rc.2 <0.2.0",
+    "@deepseek-ai/dsh-client-runtime": ">=0.1.1-rc.2 <0.2.0",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-typert-protocol": ">=0.1.1-rc.2 <0.2.0"
   },
   "dependencies": {
@@ -86,6 +89,8 @@
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/dsh-api-gateway": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-connection": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-runtime": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-registry": "0.1.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.1",

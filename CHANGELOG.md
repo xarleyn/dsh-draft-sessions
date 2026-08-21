@@ -12,4 +12,5 @@ All notable changes will be documented here. The project follows [Semantic Versi
 - Client lifecycle bridge for distinct blank Session creation and missing-shell recovery.
 - Accepted-prompt observation and blank-to-materialized DraftRecord finalization.
 - Official InputHub restore and serialized debounced optimistic autosave.
+- Current/recent-Workspace `Ctrl/Cmd + Shift + N` draft creation.
 - Initial tests, architecture documentation, specification, roadmap, and CI.

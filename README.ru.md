@@ -22,6 +22,7 @@
 - Сохранение draft при отклонённом Send и blank slash-командах.
 - Точное восстановление текста через официальный per-session InputHub.
 - Debounced optimistic autosave с обязательным flush перед переключением.
+- Создание через `Ctrl/Cmd + Shift + N` в текущем или недавнем Workspace.
 - Unit-тесты persistence, concurrency, limits, deletion и recovery.
 
 Текущий код не отправляет prompt, не изменяет историю обычных Sessions и не удаляет blank Sessions.

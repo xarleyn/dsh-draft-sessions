@@ -23,7 +23,7 @@
 - [x] Debounced optimistic autosave
 - [x] Flush pending autosave before switching Sessions
 - [x] Surface remote revision conflicts
-- [ ] Add `Ctrl/Cmd + Shift + N`
+- [x] Add `Ctrl/Cmd + Shift + N`
 
 ## Milestone 4 — sidebar integration
 

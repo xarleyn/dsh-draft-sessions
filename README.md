@@ -42,6 +42,7 @@ flowchart LR
 - Rejected Send and blank slash-command preservation.
 - Exact composer restore through the official per-session InputHub facade.
 - Debounced optimistic autosave with a mandatory pre-switch flush.
+- `Ctrl/Cmd + Shift + N` creation in the current or recent Workspace.
 - Unit coverage for persistence, concurrency, limits, deletion, and recovery.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.
@@ -104,6 +105,8 @@ await ctx.draftSessionLifecycle.ensureShell(draft);
 
 await ctx.draftComposerBridge.open(draft);
 await ctx.draftComposerBridge.flush();
+
+await ctx.draftShortcutController.create(workspaceId);
 
 await ctx.remote.draftSessions.update({
   id,

@@ -46,6 +46,8 @@ The lifecycle observes the public API client's RPC envelopes and correlates `ses
 
 Ordinary edits use a 350 ms debounce and serialized optimistic `draftSessions.update` calls. An edit arriving during an in-flight save is sent with the revision returned by that save. Navigation waits for the queue to drain before opening another Session; a remote revision conflict is shown through the owning composer and blocks the switch, so text from two drafts cannot cross.
 
+`DraftShortcutController` owns the global `Ctrl/Cmd + Shift + N` action. It resolves the current Session's Workspace, falling back to the runtime's recent Workspace, flushes the active composer, and then creates and opens a distinct lifecycle draft. One creation may be in flight at a time.
+
 ### Workspace browser replacement
 
 The stock workspace browser intentionally hides every blank Session except the current placeholder and does not expose a public row extension seam. Exact Cursor-like placement therefore needs a thin, version-tracked replacement of the presentation package. Session, Agent, persistence, and prompt execution remain upstream DSH services.

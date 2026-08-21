@@ -13,4 +13,5 @@ All notable changes will be documented here. The project follows [Semantic Versi
 - Accepted-prompt observation and blank-to-materialized DraftRecord finalization.
 - Official InputHub restore and serialized debounced optimistic autosave.
 - Current/recent-Workspace `Ctrl/Cmd + Shift + N` draft creation.
+- Pinned and verified compatible `ui-workspace` presentation version.
 - Initial tests, architecture documentation, specification, roadmap, and CI.

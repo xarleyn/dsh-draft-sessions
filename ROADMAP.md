@@ -27,7 +27,7 @@
 
 ## Milestone 4 — sidebar integration
 
-- [ ] Track the current `ui-workspace` package version
+- [x] Track the current `ui-workspace` package version
 - [ ] Add draft nodes above ordinary Session rows
 - [ ] Muted state, context menu, keyboard navigation, and drag reorder
 - [ ] Preserve all upstream ordinary Session behavior

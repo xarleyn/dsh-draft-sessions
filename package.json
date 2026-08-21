@@ -54,7 +54,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:package": "node scripts/verify-package.mjs",
+    "test:package": "node scripts/verify-package.mjs && node scripts/verify-compatibility.mjs",
     "build": "pnpm run clean && tsdown && tsc -p tsconfig.build.json",
     "check": "pnpm run format && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run test:package",
     "prepare": "tsdown && tsc -p tsconfig.build.json",
@@ -79,6 +79,7 @@
     "@deepseek-ai/dsh-client-connection": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-client-runtime": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-client-ui-conversation": ">=0.1.1-rc.2 <0.2.0",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": ">=0.1.1-rc.2 <0.2.0"
   },
   "dependencies": {
@@ -91,6 +92,7 @@
     "@deepseek-ai/dsh-client-connection": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-runtime": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-conversation": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-registry": "0.1.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.1",

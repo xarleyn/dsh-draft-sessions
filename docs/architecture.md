@@ -52,6 +52,8 @@ Ordinary edits use a 350 ms debounce and serialized optimistic `draftSessions.up
 
 The stock workspace browser intentionally hides every blank Session except the current placeholder and does not expose a public row extension seam. Exact Cursor-like placement therefore needs a thin, version-tracked replacement of the presentation package. Session, Agent, persistence, and prompt execution remain upstream DSH services.
 
+The replacement contract is pinned to `@deepseek-ai/dsh-client-ui-workspace@0.1.1-rc.2` in `compatibility.json`. The package smoke gate resolves the installed manifest and fails on a mismatch so an upstream presentation change cannot silently activate an unreviewed replacement.
+
 ## Recovery rules
 
 | Condition                              | Action                              |

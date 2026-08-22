@@ -13,6 +13,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isExpectedBrowserError } from "./browser-errors.mjs";
 
 const repo = dirname(
   fileURLToPath(new URL("../package.json", import.meta.url)),
@@ -319,9 +320,22 @@ async function browserE2e(origin) {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   const browserErrors = [];
-  page.on("pageerror", (error) => browserErrors.push(String(error)));
+  let duringHostOutage = false;
+  const recordBrowserError = (message) =>
+    browserErrors.push({ message, duringHostOutage });
+  const formatBrowserErrors = (errors) =>
+    errors.map((error) => error.message).join("\n");
+  const withHostOutage = async (callback) => {
+    duringHostOutage = true;
+    try {
+      return await callback();
+    } finally {
+      duringHostOutage = false;
+    }
+  };
+  page.on("pageerror", (error) => recordBrowserError(String(error)));
   page.on("console", (message) => {
-    if (message.type() === "error") browserErrors.push(message.text());
+    if (message.type() === "error") recordBrowserError(message.text());
   });
   await page.goto(origin);
   await dismissOnboarding(page);
@@ -332,13 +346,15 @@ async function browserE2e(origin) {
   } catch (error) {
     await page.screenshot({ path: join(temporaryRoot, "browser-boot.png") });
     throw new Error(
-      `DSH UI did not boot at ${page.url()}\n${browserErrors.join("\n")}\n${await page.locator("body").innerText()}`,
+      `DSH UI did not boot at ${page.url()}\n${formatBrowserErrors(browserErrors)}\n${await page.locator("body").innerText()}`,
       { cause: error },
     );
   }
   await dismissOnboarding(page);
   if (browserErrors.length > 0) {
-    throw new Error(`browser boot errors: ${browserErrors.join("\n")}`);
+    throw new Error(
+      `browser boot errors: ${formatBrowserErrors(browserErrors)}`,
+    );
   }
 
   const reloadText = "reload-safe packed draft";
@@ -368,23 +384,25 @@ async function browserE2e(origin) {
     },
     true,
   );
-  await stopHost();
-  host = startHost(dshBin, port, hostLog);
-  await waitFor(async () => (await fetch(origin)).ok, "restarted DSH host");
-  await page.reload();
-  await page.getByRole("tree", { name: "Sessions" }).waitFor();
-  await page.waitForTimeout(700);
-  await dismissOnboarding(page);
-  await page
-    .getByRole("treeitem", { name: `${reloadText}, Draft`, exact: true })
-    .click();
-  reloadDraft = await waitFor(async () => {
-    const drafts = await rpc(origin, "draftSessions/list", {}, true);
-    const current = drafts.find((draft) => draft.id === reloadDraft.id);
-    return current?.sessionId !== "session-missing-packed-smoke"
-      ? current
-      : undefined;
-  }, "missing Session rebind");
+  reloadDraft = await withHostOutage(async () => {
+    await stopHost();
+    host = startHost(dshBin, port, hostLog);
+    await waitFor(async () => (await fetch(origin)).ok, "restarted DSH host");
+    await page.reload();
+    await page.getByRole("tree", { name: "Sessions" }).waitFor();
+    await page.waitForTimeout(700);
+    await dismissOnboarding(page);
+    await page
+      .getByRole("treeitem", { name: `${reloadText}, Draft`, exact: true })
+      .click();
+    return waitFor(async () => {
+      const drafts = await rpc(origin, "draftSessions/list", {}, true);
+      const current = drafts.find((draft) => draft.id === reloadDraft.id);
+      return current?.sessionId !== "session-missing-packed-smoke"
+        ? current
+        : undefined;
+    }, "missing Session rebind");
+  });
   if (reloadDraft.text !== reloadText)
     throw new Error("rebind changed draft text");
 
@@ -410,42 +428,46 @@ async function browserE2e(origin) {
     name: "Send message",
     exact: true,
   });
-  await stopHost();
-  await rejectedSend.click();
-  await page.getByText(/Failed to fetch|fetch failed/i).waitFor();
-  const rejectedComposer = page.getByRole("textbox", { name: /agent|build/i });
-  if ((await rejectedComposer.inputValue()) !== rejectedText) {
-    throw new Error("transport-rejected Send cleared the composer");
-  }
-  host = startHost(dshBin, port, hostLog);
-  await waitFor(
-    async () => (await fetch(origin)).ok,
-    "DSH host after rejected Send",
-  );
-  await page.reload();
-  await page.getByRole("tree", { name: "Sessions" }).waitFor();
-  await page.waitForTimeout(700);
-  await dismissOnboarding(page);
-  await page
-    .getByRole("treeitem", { name: `${rejectedText}, Draft`, exact: true })
-    .waitFor();
-  const drafts = await rpc(origin, "draftSessions/list", {}, true);
-  if (
-    !drafts.some(
-      (draft) => draft.id === rejected.id && draft.text === rejectedText,
-    )
-  ) {
-    throw new Error(
-      "transport-rejected Send did not preserve the durable draft",
+  await withHostOutage(async () => {
+    await stopHost();
+    await rejectedSend.click();
+    await page.getByText(/Failed to fetch|fetch failed/i).waitFor();
+    const rejectedComposer = page.getByRole("textbox", {
+      name: /agent|build/i,
+    });
+    if ((await rejectedComposer.inputValue()) !== rejectedText) {
+      throw new Error("transport-rejected Send cleared the composer");
+    }
+    host = startHost(dshBin, port, hostLog);
+    await waitFor(
+      async () => (await fetch(origin)).ok,
+      "DSH host after rejected Send",
     );
-  }
+    await page.reload();
+    await page.getByRole("tree", { name: "Sessions" }).waitFor();
+    await page.waitForTimeout(700);
+    await dismissOnboarding(page);
+    await page
+      .getByRole("treeitem", { name: `${rejectedText}, Draft`, exact: true })
+      .waitFor();
+    const drafts = await rpc(origin, "draftSessions/list", {}, true);
+    if (
+      !drafts.some(
+        (draft) => draft.id === rejected.id && draft.text === rejectedText,
+      )
+    ) {
+      throw new Error(
+        "transport-rejected Send did not preserve the durable draft",
+      );
+    }
+  });
   const unexpectedBrowserErrors = browserErrors.filter(
-    (message) =>
-      !message.includes("Failed to load resource: net::ERR_CONNECTION_") &&
-      !message.includes("the server responded with a status of 404"),
+    (error) => !isExpectedBrowserError(error),
   );
   if (unexpectedBrowserErrors.length > 0) {
-    throw new Error(`browser errors: ${unexpectedBrowserErrors.join("\n")}`);
+    throw new Error(
+      `browser errors: ${formatBrowserErrors(unexpectedBrowserErrors)}`,
+    );
   }
 }
 

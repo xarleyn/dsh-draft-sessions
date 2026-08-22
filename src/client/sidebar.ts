@@ -164,6 +164,52 @@ export function projectDraftWorkspaces(
   return { ...state, items };
 }
 
+/** Remove draft execution shells from the ordinary upstream Session browser. */
+export function projectOrdinarySessions(
+  state: SessionListState,
+  drafts: readonly DraftSession[],
+): SessionListState {
+  const shells = new Set(
+    drafts.flatMap((draft) =>
+      draft.sessionId === null ? [] : [draft.sessionId],
+    ),
+  );
+  if (shells.size === 0) return state;
+  const byId = { ...state.byId };
+  for (const shell of shells) delete byId[shell as SessionId];
+  return {
+    ...state,
+    ids: state.ids.filter((id) => !shells.has(id)),
+    byId,
+    current:
+      state.current !== undefined && shells.has(state.current)
+        ? undefined
+        : state.current,
+  };
+}
+
+/** Remove draft shell accounting ids while retaining every Workspace fact. */
+export function projectOrdinaryWorkspaces(
+  state: WorkspaceListState,
+  drafts: readonly DraftSession[],
+): WorkspaceListState {
+  const shells = new Set(
+    drafts.flatMap((draft) =>
+      draft.sessionId === null ? [] : [draft.sessionId],
+    ),
+  );
+  if (shells.size === 0) return state;
+  return {
+    ...state,
+    items: state.items.map((workspace) => ({
+      ...workspace,
+      sessionIds: workspace.sessionIds.filter(
+        (id: SessionId) => !shells.has(id),
+      ),
+    })),
+  };
+}
+
 /** Draft-first Workspace rows without duplicate backing blank Sessions. */
 export function projectWorkspaceSidebar({
   workspaceId,

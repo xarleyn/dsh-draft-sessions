@@ -3,6 +3,8 @@ import {
   planDraftReorder,
   projectDraftSessions,
   projectDraftWorkspaces,
+  projectOrdinarySessions,
+  projectOrdinaryWorkspaces,
   projectWorkspaceSidebar,
 } from "../src/client/sidebar.js";
 import type { DraftSession } from "../src/shared/types.js";
@@ -139,6 +141,38 @@ describe("draft sidebar projection", () => {
     expect(projected.items[0]?.sessionIds).toEqual([
       "shell-a",
       "shell-b",
+      "session-normal",
+    ]);
+  });
+
+  it("hides backing shells only from the ordinary upstream projections", () => {
+    const normal = { id: "session-normal" };
+    const shell = { id: "shell-a" };
+    const sessions = {
+      ids: ["session-normal", "shell-a"],
+      byId: { "session-normal": normal, "shell-a": shell },
+      current: "shell-a",
+    } as never;
+    const workspaces = {
+      items: [
+        {
+          workspaceId: "workspace-a",
+          sessionIds: ["session-normal", "shell-a"],
+        },
+      ],
+    } as never;
+
+    const projectedSessions = projectOrdinarySessions(sessions, [
+      draft("a", 0),
+    ]);
+    const projectedWorkspaces = projectOrdinaryWorkspaces(workspaces, [
+      draft("a", 0),
+    ]);
+
+    expect(projectedSessions.ids).toEqual(["session-normal"]);
+    expect(projectedSessions.byId).toEqual({ "session-normal": normal });
+    expect(projectedSessions.current).toBeUndefined();
+    expect(projectedWorkspaces.items[0]?.sessionIds).toEqual([
       "session-normal",
     ]);
   });

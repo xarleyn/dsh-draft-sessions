@@ -29,7 +29,7 @@
 
 - [x] Track the current `ui-workspace` package version
 - [x] Add draft nodes above ordinary Session rows
-- [ ] Muted state, context menu, keyboard navigation, and drag reorder
+- [x] Muted state, context menu, keyboard navigation, and drag reorder
 - [x] Preserve all upstream ordinary Session behavior
 - [x] Document the compatibility fallback if replacement activation fails
 

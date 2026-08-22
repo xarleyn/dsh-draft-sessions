@@ -8,10 +8,11 @@ import type {
 import { createElement, type ComponentType } from "react";
 import { apply as applyUpstreamWorkspace } from "@deepseek-ai/dsh-client-ui-workspace/client";
 import type { DraftSession } from "../shared/types.js";
+import { DraftSidebarView } from "./draft-sidebar-view.js";
 import {
   planDraftReorder,
-  projectDraftSessions,
-  projectDraftWorkspaces,
+  projectOrdinarySessions,
+  projectOrdinaryWorkspaces,
   type DraftSidebarSource,
 } from "./sidebar.js";
 
@@ -20,6 +21,7 @@ type SelectorHook<State> = <Selected>(
 ) => Selected;
 
 interface WorkspaceBrowserProps {
+  readonly wide: boolean;
   readonly useDrafts: SelectorHook<readonly DraftSession[]>;
   readonly useSessions: SelectorHook<SessionListState>;
   readonly useWorkspaces: SelectorHook<WorkspaceListState>;
@@ -57,16 +59,6 @@ interface WorkspaceRegistration {
   readonly [key: string]: unknown;
 }
 
-function draftBySession(
-  drafts: readonly DraftSession[],
-): Map<string, DraftSession> {
-  return new Map(
-    drafts.flatMap((draft) =>
-      draft.sessionId === null ? [] : [[draft.sessionId, draft] as const],
-    ),
-  );
-}
-
 function isCompatibleEntry(entry: StoredWorkspaceEntry): boolean {
   return (
     typeof entry.component === "function" &&
@@ -85,23 +77,23 @@ function replacementComponent(
 ): ComponentType<WorkspaceBrowserProps> {
   return function DraftWorkspaceBrowser(props) {
     const drafts = props.useDrafts((value) => value);
-    const bySession = draftBySession(drafts);
+    const currentSessionId = props.useSessions((state) => state.current);
+    const workspaces = props.useWorkspaces((state) => state.items);
     const useSessions: SelectorHook<SessionListState> = (selector) =>
       props.useSessions((state) =>
-        selector(projectDraftSessions(state, drafts)),
+        selector(projectOrdinarySessions(state, drafts)),
       );
     const useWorkspaces: SelectorHook<WorkspaceListState> = (selector) =>
       props.useWorkspaces((state) =>
-        selector(projectDraftWorkspaces(state, drafts)),
+        selector(projectOrdinaryWorkspaces(state, drafts)),
       );
-    const open = (sessionId: SessionId) => {
-      const draft = bySession.get(sessionId);
-      if (draft === undefined) props.open(sessionId);
-      else void ctx.draftComposerBridge.open(draft);
-    };
-    const renameSession = async (sessionId: SessionId, title: string) => {
-      const draft = bySession.get(sessionId);
-      if (draft === undefined) return props.renameSession(sessionId, title);
+    const workspaceNames = Object.fromEntries(
+      workspaces.map((workspace) => [
+        String(workspace.workspaceId),
+        workspace.title,
+      ]),
+    );
+    const rename = async (draft: DraftSession, title: string) => {
       const result = await ctx.remote.draftSessions.update({
         id: draft.id,
         expectedRevision: draft.revision,
@@ -110,73 +102,98 @@ function replacementComponent(
       if (!result.ok) throw new Error(result.error.message);
       source.accept(result.value);
     };
-    const forkSession = (sessionId: SessionId) => {
-      const draft = bySession.get(sessionId);
-      if (draft === undefined) return props.forkSession(sessionId);
-      void ctx.draftSessionLifecycle
-        .create({
-          workspaceId: draft.workspaceId,
-          text: draft.text,
-          ...(draft.title === undefined ? {} : { title: draft.title }),
-        })
-        .then((created) => {
-          source.accept(created);
-          return ctx.draftComposerBridge.open(created);
-        })
-        .catch((error: unknown) => {
-          console.error("draft fork failed", error);
-        });
-    };
-    const archiveSession = async (sessionId: SessionId) => {
-      const draft = bySession.get(sessionId);
-      if (draft === undefined) return props.archiveSession(sessionId);
-      const result = await ctx.remote.draftSessions.delete({
-        id: draft.id,
-        expectedRevision: draft.revision,
+    const duplicate = async (draft: DraftSession) => {
+      const created = await ctx.draftSessionLifecycle.create({
+        workspaceId: draft.workspaceId,
+        text: draft.text,
+        ...(draft.title === undefined ? {} : { title: draft.title }),
       });
-      if (!result.ok) throw new Error(result.error.message);
-      source.remove(draft.id);
+      source.accept(created);
+      await ctx.draftComposerBridge.open(created);
     };
-    const insertSessionBefore = async (
-      workspaceId: WorkspaceId,
-      sessionId: SessionId,
-      beforeSessionId?: SessionId,
-    ) => {
-      const draft = bySession.get(sessionId);
-      if (draft === undefined) {
-        return props.insertSessionBefore(
-          workspaceId,
-          sessionId,
-          beforeSessionId,
-        );
+    const remove = async (draft: DraftSession) => {
+      const isCurrent =
+        draft.sessionId !== null && draft.sessionId === currentSessionId;
+      const saved = isCurrent
+        ? ((await ctx.draftComposerBridge.close()) ?? draft)
+        : draft;
+      let result: Awaited<ReturnType<typeof ctx.remote.draftSessions.delete>>;
+      try {
+        result = await ctx.remote.draftSessions.delete({
+          id: saved.id,
+          expectedRevision: saved.revision,
+        });
+      } catch (cause) {
+        if (isCurrent) {
+          await ctx.draftComposerBridge.open(saved).catch(() => undefined);
+        }
+        throw cause;
       }
+      if (!result.ok) {
+        if (isCurrent) {
+          await ctx.draftComposerBridge.open(saved).catch(() => undefined);
+        }
+        throw new Error(result.error.message);
+      }
+      source.remove(draft.id);
+      if (isCurrent) ctx.sessions.clear();
+    };
+    const reorder = async (
+      workspaceId: string,
+      draftId: string,
+      beforeDraftId?: string,
+    ) => {
       const workspaceDrafts = drafts.filter(
-        (item) => item.workspaceId === workspaceId,
+        (draft) => draft.workspaceId === workspaceId,
       );
-      const beforeDraft =
-        beforeSessionId === undefined
-          ? undefined
-          : bySession.get(beforeSessionId)?.id;
       for (const update of planDraftReorder(
         workspaceDrafts,
-        draft.id,
-        beforeDraft,
+        draftId,
+        beforeDraftId,
       )) {
         const result = await ctx.remote.draftSessions.update(update);
         if (!result.ok) throw new Error(result.error.message);
         source.accept(result.value);
       }
     };
-    return createElement(upstream, {
-      ...props,
-      useSessions,
-      useWorkspaces,
-      open,
-      renameSession,
-      forkSession,
-      archiveSession,
-      insertSessionBefore,
-    });
+    return createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          height: "100%",
+        },
+      },
+      props.wide
+        ? createElement(DraftSidebarView, {
+            drafts,
+            currentSessionId,
+            workspaceNames,
+            onOpen: (draft) => {
+              void ctx.draftComposerBridge
+                .open(draft)
+                .catch((error: unknown) => {
+                  console.error("draft open failed", error);
+                });
+            },
+            onRename: rename,
+            onDuplicate: duplicate,
+            onDelete: remove,
+            onReorder: reorder,
+          })
+        : null,
+      createElement(
+        "div",
+        { style: { display: "flex", flex: 1, minHeight: 0 } },
+        createElement(upstream, {
+          ...props,
+          useSessions,
+          useWorkspaces,
+        }),
+      ),
+    );
   };
 }
 

@@ -7,6 +7,7 @@ vi.mock("@deepseek-ai/dsh-client-ui-workspace/client", () => ({
 }));
 
 import { activateWorkspaceReplacement } from "../src/client/workspace-replacement.js";
+import type { DraftSession } from "../src/shared/types.js";
 
 function compatibleRegistration() {
   const component = () => null;
@@ -66,26 +67,34 @@ describe("workspace replacement activation", () => {
     const element = adapted({
       useDrafts: (selector: (value: readonly unknown[]) => unknown) =>
         selector([]),
-      useSessions: vi.fn(),
-      useWorkspaces: vi.fn(),
+      useSessions: (selector: (value: { current: undefined }) => unknown) =>
+        selector({ current: undefined }),
+      useWorkspaces: (selector: (value: { items: never[] }) => unknown) =>
+        selector({ items: [] }),
+      wide: false,
       open,
       renameSession,
       forkSession: vi.fn(),
       archiveSession,
       insertSessionBefore,
     });
-    (element.props.open as (id: string) => void)("session-normal");
+    const children = element.props.children as [
+      null,
+      { props: { children: { props: Record<string, unknown> } } },
+    ];
+    const upstreamProps = children[1].props.children.props;
+    (upstreamProps.open as (id: string) => void)("session-normal");
     await (
-      element.props.renameSession as (
+      upstreamProps.renameSession as (
         id: string,
         title: string,
       ) => Promise<void>
     )("session-normal", "Normal");
-    await (element.props.archiveSession as (id: string) => Promise<void>)(
+    await (upstreamProps.archiveSession as (id: string) => Promise<void>)(
       "session-normal",
     );
     await (
-      element.props.insertSessionBefore as (
+      upstreamProps.insertSessionBefore as (
         workspaceId: string,
         id: string,
       ) => Promise<void>
@@ -96,7 +105,6 @@ describe("workspace replacement activation", () => {
     expect(insertSessionBefore).toHaveBeenCalledWith(
       "workspace-a",
       "session-normal",
-      undefined,
     );
   });
 
@@ -109,6 +117,168 @@ describe("workspace replacement activation", () => {
       "upstream-active",
     );
     expect(upstream.apply).not.toHaveBeenCalled();
+  });
+
+  it("flushes and clears the active composer before deleting its draft", async () => {
+    const registration = compatibleRegistration();
+    const register = vi.fn(() => () => undefined);
+    upstream.apply.mockImplementation((ctx) => {
+      ctx.slots.register(registration.options, registration.component);
+    });
+    const events: string[] = [];
+    const remove = vi.fn();
+    const draft: DraftSession = {
+      version: 1,
+      id: "draft-a",
+      sessionId: "shell-a",
+      workspaceId: "workspace-a",
+      text: "Unsent",
+      createdAt: 1,
+      updatedAt: 1,
+      order: 0,
+      state: "ready",
+      revision: 1,
+    };
+    const saved = { ...draft, text: "Autosaved", revision: 2 };
+    const deleteDraft = vi.fn(async () => {
+      events.push("delete");
+      return { ok: true as const, value: undefined };
+    });
+    const ctx = {
+      slots: { entries: () => [], register },
+      draftComposerBridge: {
+        close: vi.fn(async () => {
+          events.push("close");
+          return saved;
+        }),
+        open: vi.fn(),
+      },
+      remote: {
+        draftSessions: {
+          delete: deleteDraft,
+        },
+      },
+      sessions: {
+        clear: vi.fn(() => events.push("clear")),
+      },
+    } as never;
+    const source = {
+      getSnapshot: () => [draft],
+      subscribe: vi.fn(),
+      remove,
+    } as never;
+
+    activateWorkspaceReplacement(ctx, source);
+    const [, registeredComponent] = register.mock.calls[0] as unknown as [
+      unknown,
+      unknown,
+    ];
+    const component = registeredComponent as (
+      props: Record<string, unknown>,
+    ) => { props: { children: [{ props: Record<string, unknown> }, unknown] } };
+    const element = component({
+      useDrafts: (selector: (value: readonly DraftSession[]) => unknown) =>
+        selector([draft]),
+      useSessions: (selector: (value: { current: string }) => unknown) =>
+        selector({ current: "shell-a" }),
+      useWorkspaces: (
+        selector: (value: {
+          items: readonly Record<string, unknown>[];
+        }) => unknown,
+      ) =>
+        selector({
+          items: [
+            {
+              workspaceId: "workspace-a",
+              title: "Workspace A",
+              sessionIds: ["shell-a"],
+            },
+          ],
+        }),
+      wide: true,
+    });
+    const panel = element.props.children[0];
+
+    await (panel.props.onDelete as (value: DraftSession) => Promise<void>)(
+      draft,
+    );
+
+    expect(events).toEqual(["close", "delete", "clear"]);
+    expect(deleteDraft).toHaveBeenCalledWith({
+      id: "draft-a",
+      expectedRevision: 2,
+    });
+    expect(remove).toHaveBeenCalledWith("draft-a");
+  });
+
+  it("restores the active composer when draft deletion is rejected", async () => {
+    const registration = compatibleRegistration();
+    const register = vi.fn(() => () => undefined);
+    upstream.apply.mockImplementation((ctx) => {
+      ctx.slots.register(registration.options, registration.component);
+    });
+    const draft = {
+      version: 1,
+      id: "draft-a",
+      sessionId: "shell-a",
+      workspaceId: "workspace-a",
+      text: "Unsent",
+      createdAt: 1,
+      updatedAt: 1,
+      order: 0,
+      state: "ready",
+      revision: 1,
+    } satisfies DraftSession;
+    const open = vi.fn(async () => draft);
+    const clear = vi.fn();
+    const remove = vi.fn();
+    const ctx = {
+      slots: { entries: () => [], register },
+      draftComposerBridge: { close: vi.fn(async () => draft), open },
+      remote: {
+        draftSessions: {
+          delete: vi.fn(async () => ({
+            ok: false as const,
+            error: { message: "stale revision" },
+          })),
+        },
+      },
+      sessions: { clear },
+    } as never;
+    const source = {
+      getSnapshot: () => [draft],
+      subscribe: vi.fn(),
+      remove,
+    } as never;
+
+    activateWorkspaceReplacement(ctx, source);
+    const [, registeredComponent] = register.mock.calls[0] as unknown as [
+      unknown,
+      unknown,
+    ];
+    const component = registeredComponent as (
+      props: Record<string, unknown>,
+    ) => { props: { children: [{ props: Record<string, unknown> }, unknown] } };
+    const element = component({
+      useDrafts: (selector: (value: readonly DraftSession[]) => unknown) =>
+        selector([draft]),
+      useSessions: (selector: (value: { current: string }) => unknown) =>
+        selector({ current: "shell-a" }),
+      useWorkspaces: (selector: (value: { items: never[] }) => unknown) =>
+        selector({ items: [] }),
+      wide: true,
+    });
+
+    await expect(
+      (
+        element.props.children[0].props.onDelete as (
+          value: DraftSession,
+        ) => Promise<void>
+      )(draft),
+    ).rejects.toThrow("stale revision");
+    expect(open).toHaveBeenCalledWith(draft);
+    expect(clear).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
   });
 
   it("falls back to an untouched registration on a contract mismatch", () => {

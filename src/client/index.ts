@@ -11,7 +11,7 @@ import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/clie
 import type {} from "@deepseek-ai/dsh-api-gateway/client";
 import draftSessionsRemote from "../remote.js";
 import { DraftComposerBridge } from "./composer.js";
-import { DraftSessionLifecycle } from "./lifecycle.js";
+import { DraftSessionLifecycle, envelopeSource } from "./lifecycle.js";
 import { DraftSidebarSource } from "./sidebar.js";
 import { DraftShortcutController } from "./shortcut.js";
 import { activateWorkspaceReplacement } from "./workspace-replacement.js";
@@ -51,10 +51,12 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const dispose = await ctx.remote.$mount(draftSessionsRemote);
   await ctx.inject(["remote.draftSessions"], (remoteCtx) => {
     const drafts = remoteCtx.remote.draftSessions;
+    const envelopes = envelopeSource(remoteCtx.connection.api);
     const sidebar = new DraftSidebarSource(remoteCtx, drafts);
     const lifecycle = new DraftSessionLifecycle(remoteCtx, {
       drafts,
       sessions: remoteCtx.connection.api.sessions,
+      ...(envelopes === undefined ? {} : { envelopes }),
       sidebar,
     });
     const composer = new DraftComposerBridge(remoteCtx, {

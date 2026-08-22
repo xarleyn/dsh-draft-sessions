@@ -20,7 +20,7 @@ import type { DraftSidebarSource } from "./sidebar.js";
 type DraftSessionsRemote = TypertRemoteNamespace<"draftSessions">;
 type SessionsApi = Pick<IApiClient["sessions"], "create" | "list">;
 
-interface ApiEnvelopeSource {
+export interface ApiEnvelopeSource {
   subscribeEnvelopes(
     listener: (batch: readonly RpcMessage[]) => void,
   ): () => void;
@@ -73,7 +73,7 @@ export interface DraftSessionLifecycleOptions {
 
 const MAX_PENDING_PROMPTS = 1_000;
 
-function envelopeSource(api: IApiClient): ApiEnvelopeSource | undefined {
+export function envelopeSource(api: IApiClient): ApiEnvelopeSource | undefined {
   const candidate = api as IApiClient & Partial<ApiEnvelopeSource>;
   return typeof candidate.subscribeEnvelopes === "function"
     ? candidate

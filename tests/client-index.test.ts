@@ -17,6 +17,7 @@ vi.mock("../src/client/sidebar.js", () => ({
 }));
 
 vi.mock("../src/client/lifecycle.js", () => ({
+  envelopeSource: (api: unknown) => api,
   DraftSessionLifecycle: class {
     constructor(...args: unknown[]) {
       observed.lifecycle(...args);
@@ -54,9 +55,10 @@ describe("client activation", () => {
   it("uses a context injected with the mounted Remote namespace", async () => {
     const drafts = {};
     const sessionsApi = {};
+    const subscribeEnvelopes = vi.fn(() => () => undefined);
     const readyCtx = {
       remote: { draftSessions: drafts },
-      connection: { api: { sessions: sessionsApi } },
+      connection: { api: { sessions: sessionsApi, subscribeEnvelopes } },
       sessions: {},
       workspaces: {},
       conversation: {},
@@ -88,6 +90,7 @@ describe("client activation", () => {
     expect(observed.lifecycle).toHaveBeenCalledWith(readyCtx, {
       drafts,
       sessions: sessionsApi,
+      envelopes: { sessions: sessionsApi, subscribeEnvelopes },
       sidebar: expect.anything(),
     });
     expect(observed.composer).toHaveBeenCalledWith(readyCtx, {

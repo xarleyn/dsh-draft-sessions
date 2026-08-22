@@ -36,10 +36,10 @@
 ## Milestone 5 — compatibility and release
 
 - [x] Manual tag-driven GitHub Release workflow with opt-in npm publishing
-- [ ] Browser reload E2E
-- [ ] Host restart/rebind E2E
-- [ ] Accepted/rejected Send E2E
-- [ ] Windows, macOS, and Linux smoke runs
-- [ ] Packed-install smoke test
-- [ ] Compatibility matrix across supported DSH releases
+- [x] Browser reload E2E
+- [x] Host restart/rebind E2E
+- [x] Accepted/rejected Send E2E
+- [ ] Windows, macOS, and Linux smoke runs (matrix configured; awaiting its first green CI run)
+- [x] Packed-install smoke test
+- [x] Compatibility matrix across supported DSH releases
 - [ ] `0.1.0` release

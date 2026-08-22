@@ -39,3 +39,120 @@ jobs:
       - name: Verify package contents
         if: matrix.os == 'ubuntu-latest'
         run: pnpm pack --dry-run
+
+  package:
+    name: Package integration artifact
+    needs: check
+    runs-on: ubuntu-latest
+    outputs:
+      dsh_matrix: ${{ steps.compatibility.outputs.matrix }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Read compatibility matrix
+        id: compatibility
+        shell: bash
+        run: node -e "const c=require('./compatibility.json'); console.log('matrix='+JSON.stringify(c.deepseekHarness.testedReleases))" >> "$GITHUB_OUTPUT"
+
+      - name: Pack tested artifact
+        run: pnpm pack --pack-destination integration-artifact
+
+      - name: Upload tested artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-package
+          path: integration-artifact/*.tgz
+          if-no-files-found: error
+          compression-level: 0
+
+  packed-smoke:
+    name: Packed smoke (${{ matrix.os }}, DSH ${{ matrix.dsh }})
+    needs: package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        dsh: ${{ fromJSON(needs.package.outputs.dsh_matrix) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download tested artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: integration-package
+          path: integration-artifact
+
+      - name: Run packed DSH smoke
+        run: pnpm smoke:packed
+        env:
+          DSH_VERSION: ${{ matrix.dsh }}
+          DSH_DRAFT_TARBALL: integration-artifact
+
+  browser-e2e:
+    name: Browser lifecycle E2E (DSH ${{ matrix.dsh }})
+    needs: package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dsh: ${{ fromJSON(needs.package.outputs.dsh_matrix) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download tested artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: integration-package
+          path: integration-artifact
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser lifecycle E2E
+        run: pnpm e2e:browser
+        env:
+          DSH_VERSION: ${{ matrix.dsh }}
+          DSH_DRAFT_TARBALL: integration-artifact

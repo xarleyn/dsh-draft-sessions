@@ -4,6 +4,10 @@ All notable changes will be documented here. The project follows [Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+
+- Retargeted the development and packed-install compatibility gates to DeepSeek Harness `0.1.0-rc.7`.
+
 ### Added
 
 - Inlined the pinned workspace implementation into the draft client bundle so disabling the stock Loader row no longer leaves a missing browser module.

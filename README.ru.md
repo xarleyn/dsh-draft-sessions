@@ -35,7 +35,7 @@
 
 - Node.js `^22.19.0` или `>=24.0.0`
 - pnpm 11
-- DeepSeek Harness `next`: `>=0.1.1-rc.2 <0.2.0`
+- DeepSeek Harness `next`: `>=0.1.0-rc.7 <0.2.0`
 
 ## Локальная разработка
 

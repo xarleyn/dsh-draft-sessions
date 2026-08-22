@@ -6,6 +6,7 @@ All notable changes will be documented here. The project follows [Semantic Versi
 
 ### Added
 
+- Inlined the pinned workspace implementation into the draft client bundle so disabling the stock Loader row no longer leaves a missing browser module.
 - Versioned Host-backed DraftStore with atomic JSON persistence.
 - CRUD, ordering, per-Workspace limits, recovery rebinding, and optimistic revisions.
 - Strict Typert Remote contribution for the Web client.

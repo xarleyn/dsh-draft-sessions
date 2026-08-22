@@ -6,6 +6,8 @@ import type {
   WorkspaceListState,
 } from "@deepseek-ai/dsh-client-runtime/client";
 import { createElement, type ComponentType } from "react";
+// tsdown replaces this value edge with the pinned client factory body, so the
+// browser artifact never asks the module table for the disabled workspace row.
 import { apply as applyUpstreamWorkspace } from "@deepseek-ai/dsh-client-ui-workspace/client";
 import type { DraftSession } from "../shared/types.js";
 import { DraftSidebarView } from "./draft-sidebar-view.js";

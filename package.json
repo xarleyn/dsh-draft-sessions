@@ -42,8 +42,7 @@
         "@deepseek-ai/dsh-api-gateway",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-ui-workspace"
+        "@deepseek-ai/dsh-client-ui-sidebar"
       ],
       "platform": "web"
     }
@@ -65,7 +64,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:package": "node scripts/verify-package.mjs && node scripts/verify-compatibility.mjs",
+    "test:package": "node scripts/verify-package.mjs && node scripts/verify-client-bundle.mjs && node scripts/verify-compatibility.mjs",
     "build": "pnpm run clean && tsdown && tsc -p tsconfig.build.json",
     "check": "pnpm run format && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run test:package",
     "prepare": "tsdown && tsc -p tsconfig.build.json",

@@ -73,9 +73,7 @@ export class DraftShortcutController extends Service {
     this.composer = options?.composer ?? ctx.draftComposerBridge;
     this.sessions = options?.sessions ?? ctx.sessions;
     this.workspaces = options?.workspaces ?? ctx.workspaces;
-    const shortcuts =
-      options?.shortcuts ??
-      (options === undefined ? browserShortcuts() : undefined);
+    const shortcuts = options?.shortcuts ?? browserShortcuts();
     if (shortcuts !== undefined) {
       ctx.effect(
         () =>

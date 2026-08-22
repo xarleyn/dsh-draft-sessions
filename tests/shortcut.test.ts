@@ -164,6 +164,21 @@ describe("draft shortcut", () => {
     await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
   });
 
+  it("subscribes to browser keydown when production options omit a source", () => {
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+    vi.stubGlobal("window", { addEventListener, removeEventListener });
+    try {
+      new DraftShortcutController(new Context(), options());
+      expect(addEventListener).toHaveBeenCalledWith(
+        "keydown",
+        expect.any(Function),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("ignores modified, repeated, and unrelated key presses", () => {
     const shortcuts = shortcutSource();
     const create = vi.fn();

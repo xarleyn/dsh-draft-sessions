@@ -108,6 +108,76 @@ describe("workspace replacement activation", () => {
     );
   });
 
+  it("keeps projected selector snapshots referentially stable", () => {
+    const registration = compatibleRegistration();
+    const register = vi.fn(() => () => undefined);
+    upstream.apply.mockImplementation((ctx) => {
+      ctx.slots.register(registration.options, registration.component);
+    });
+    const draft = {
+      version: 1,
+      id: "draft-a",
+      sessionId: "shell-a",
+      workspaceId: "workspace-a",
+      text: "",
+      createdAt: 1,
+      updatedAt: 1,
+      order: 0,
+      state: "ready",
+      revision: 1,
+    } satisfies DraftSession;
+    const drafts = [draft] as const;
+    const sessions = {
+      ids: ["shell-a"],
+      byId: { "shell-a": { sessionId: "shell-a" } },
+      current: "shell-a",
+    };
+    const workspaces = {
+      items: [
+        {
+          workspaceId: "workspace-a",
+          title: "Workspace A",
+          sessionIds: ["shell-a"],
+        },
+      ],
+    };
+    const ctx = {
+      slots: { entries: () => [], register },
+    } as never;
+    const source = { getSnapshot: () => drafts, subscribe: vi.fn() } as never;
+
+    activateWorkspaceReplacement(ctx, source);
+    const [, registeredComponent] = register.mock.calls[0] as unknown as [
+      unknown,
+      (props: Record<string, unknown>) => {
+        props: {
+          children: [unknown, { props: { children: { props: never } } }];
+        };
+      },
+    ];
+    const element = registeredComponent({
+      useDrafts: (selector: (value: typeof drafts) => unknown) =>
+        selector(drafts),
+      useSessions: (selector: (value: typeof sessions) => unknown) =>
+        selector(sessions),
+      useWorkspaces: (selector: (value: typeof workspaces) => unknown) =>
+        selector(workspaces),
+      wide: false,
+    });
+    const upstreamProps = element.props.children[1].props.children.props as {
+      useSessions: (selector: (value: unknown) => unknown) => unknown;
+      useWorkspaces: (selector: (value: unknown) => unknown) => unknown;
+    };
+    const identity = (value: unknown) => value;
+
+    expect(upstreamProps.useSessions(identity)).toBe(
+      upstreamProps.useSessions(identity),
+    );
+    expect(upstreamProps.useWorkspaces(identity)).toBe(
+      upstreamProps.useWorkspaces(identity),
+    );
+  });
+
   it("leaves an already active upstream occupant untouched", () => {
     const ctx = {
       slots: { entries: () => [{}] },

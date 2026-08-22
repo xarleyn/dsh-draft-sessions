@@ -77,17 +77,55 @@ function replacementComponent(
   source: DraftSidebarSource,
   upstream: ComponentType<WorkspaceBrowserProps>,
 ): ComponentType<WorkspaceBrowserProps> {
+  const sessionProjections = new WeakMap<
+    SessionListState,
+    WeakMap<readonly DraftSession[], SessionListState>
+  >();
+  const workspaceProjections = new WeakMap<
+    WorkspaceListState,
+    WeakMap<readonly DraftSession[], WorkspaceListState>
+  >();
+  const ordinarySessions = (
+    state: SessionListState,
+    drafts: readonly DraftSession[],
+  ) => {
+    let byDrafts = sessionProjections.get(state);
+    if (byDrafts === undefined) {
+      byDrafts = new WeakMap();
+      sessionProjections.set(state, byDrafts);
+    }
+    let projected = byDrafts.get(drafts);
+    if (projected === undefined) {
+      projected = projectOrdinarySessions(state, drafts);
+      byDrafts.set(drafts, projected);
+    }
+    return projected;
+  };
+  const ordinaryWorkspaces = (
+    state: WorkspaceListState,
+    drafts: readonly DraftSession[],
+  ) => {
+    let byDrafts = workspaceProjections.get(state);
+    if (byDrafts === undefined) {
+      byDrafts = new WeakMap();
+      workspaceProjections.set(state, byDrafts);
+    }
+    let projected = byDrafts.get(drafts);
+    if (projected === undefined) {
+      projected = projectOrdinaryWorkspaces(state, drafts);
+      byDrafts.set(drafts, projected);
+    }
+    return projected;
+  };
   return function DraftWorkspaceBrowser(props) {
     const drafts = props.useDrafts((value) => value);
     const currentSessionId = props.useSessions((state) => state.current);
     const workspaces = props.useWorkspaces((state) => state.items);
     const useSessions: SelectorHook<SessionListState> = (selector) =>
-      props.useSessions((state) =>
-        selector(projectOrdinarySessions(state, drafts)),
-      );
+      props.useSessions((state) => selector(ordinarySessions(state, drafts)));
     const useWorkspaces: SelectorHook<WorkspaceListState> = (selector) =>
       props.useWorkspaces((state) =>
-        selector(projectOrdinaryWorkspaces(state, drafts)),
+        selector(ordinaryWorkspaces(state, drafts)),
       );
     const workspaceNames = Object.fromEntries(
       workspaces.map((workspace) => [

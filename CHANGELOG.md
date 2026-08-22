@@ -9,6 +9,7 @@ All notable changes will be documented here. The project follows [Semantic Versi
 - Inlined the pinned workspace implementation into the draft client bundle so disabling the stock Loader row no longer leaves a missing browser module.
 - Activated draft controllers from a context explicitly injected with the dynamically mounted `remote.draftSessions` service.
 - Restored the production `Ctrl/Cmd + Shift + N` listener when controller dependencies are supplied explicitly.
+- Memoized draft-filtered Session and Workspace selector snapshots to prevent React external-store update loops.
 - Versioned Host-backed DraftStore with atomic JSON persistence.
 - CRUD, ordering, per-Workspace limits, recovery rebinding, and optimistic revisions.
 - Strict Typert Remote contribution for the Web client.

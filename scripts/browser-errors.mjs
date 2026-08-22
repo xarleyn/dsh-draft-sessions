@@ -1,5 +1,5 @@
 const EXPECTED_HOST_OUTAGE_ERROR =
-  /\b(?:net::ERR_(?:CONNECTION_(?:ABORTED|CLOSED|REFUSED|RESET)|INCOMPLETE_CHUNKED_ENCODING)|WebSocket connection to '.+' failed: Connection closed before receiving a handshake response)\b/;
+  /\bnet::ERR_(?:CONNECTION_(?:ABORTED|CLOSED|REFUSED|RESET)|INCOMPLETE_CHUNKED_ENCODING)\b/;
 
 export function isExpectedBrowserError(error) {
   return (

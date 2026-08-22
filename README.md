@@ -55,7 +55,7 @@ The current implementation deliberately does not send prompts, modify ordinary S
 
 - Node.js `^22.19.0` or `>=24.0.0`
 - pnpm 11
-- DeepSeek Harness `next`, currently `>=0.1.0-rc.7 <0.2.0`
+- DeepSeek Harness `next`, currently `>=0.1.1-rc.2 <0.2.0`
 
 The `next` requirement is intentional: the plugin uses the current Typert Remote API published by DSH.
 

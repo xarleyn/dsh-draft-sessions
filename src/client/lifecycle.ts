@@ -71,6 +71,10 @@ export interface DraftSessionLifecycleOptions {
   readonly sidebar?: Pick<DraftSidebarSource, "accept" | "remove">;
 }
 
+export type BeforeDraftFinalizeListener = (
+  sessionId: string,
+) => void | Promise<void>;
+
 const MAX_PENDING_PROMPTS = 1_000;
 
 export function envelopeSource(api: IApiClient): ApiEnvelopeSource | undefined {
@@ -108,6 +112,8 @@ export class DraftSessionLifecycle extends Service {
   private readonly sidebar:
     Pick<DraftSidebarSource, "accept" | "remove"> | undefined;
   private readonly pendingPrompts = new Map<string, string>();
+  private readonly beforeFinalizeListeners =
+    new Set<BeforeDraftFinalizeListener>();
   private observationQueue = Promise.resolve();
 
   constructor(ctx: Context, options?: DraftSessionLifecycleOptions) {
@@ -200,6 +206,14 @@ export class DraftSessionLifecycle extends Service {
     return reconciled;
   }
 
+  /** Run cleanup hooks before an accepted Session's durable draft is removed. */
+  onBeforeFinalize(listener: BeforeDraftFinalizeListener): () => void {
+    this.beforeFinalizeListeners.add(listener);
+    return () => {
+      this.beforeFinalizeListeners.delete(listener);
+    };
+  }
+
   /**
    * Finalize drafts for an accepted prompt only after DSH reports the Session
    * as nonblank. Returns false while the transition is not yet observable.
@@ -214,6 +228,10 @@ export class DraftSessionLifecycle extends Service {
         session.sessionId === sessionId && session.blank === false,
     );
     if (!materialized) return false;
+
+    for (const listener of [...this.beforeFinalizeListeners]) {
+      await listener(sessionId);
+    }
 
     const drafts = this.remoteValue(await this.drafts.list({}), "draft-list");
     let deleted = false;

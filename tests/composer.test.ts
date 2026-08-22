@@ -58,10 +58,16 @@ function bridgeOptions(
   inputs: ReturnType<typeof input>[],
   update: (...args: never[]) => unknown,
   events: string[] = [],
+  observeFinalize: (
+    listener: (sessionId: string) => void | Promise<void>,
+  ) => () => void = () => () => undefined,
 ): DraftComposerBridgeOptions {
   let inputIndex = 0;
   return {
-    lifecycle: { ensureShell: async (value) => value },
+    lifecycle: {
+      ensureShell: async (value) => value,
+      onBeforeFinalize: observeFinalize,
+    },
     drafts: { update } as never,
     sessions: {
       open: ((sessionId: string) => {
@@ -126,6 +132,30 @@ describe("DraftComposerBridge", () => {
       text: "after",
       revision: 2,
     });
+  });
+
+  it("detaches before an accepted Session removes its draft", async () => {
+    vi.useFakeTimers();
+    const composer = input();
+    const update = vi.fn();
+    let beforeFinalize:
+      ((sessionId: string) => void | Promise<void>) | undefined;
+    const bridge = new DraftComposerBridge(
+      new Context(),
+      bridgeOptions([composer], update, [], (listener) => {
+        beforeFinalize = listener;
+        return () => {
+          beforeFinalize = undefined;
+        };
+      }),
+    );
+    await bridge.open(draft("draft-a", "session-a", "send me"));
+
+    await beforeFinalize?.("session-a");
+    composer.edit("");
+    await vi.advanceTimersByTimeAsync(350);
+
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("flushes pending autosave before switching Sessions", async () => {

@@ -26,7 +26,10 @@ interface ActiveDraft {
 }
 
 export interface DraftComposerBridgeOptions {
-  readonly lifecycle: Pick<DraftSessionLifecycle, "ensureShell">;
+  readonly lifecycle: Pick<
+    DraftSessionLifecycle,
+    "ensureShell" | "onBeforeFinalize"
+  >;
   readonly drafts: DraftSessionsRemote;
   readonly sessions: Pick<ISessions, "open" | "scope">;
   readonly conversation: Pick<IConversation, "input">;
@@ -62,7 +65,7 @@ function debounceDelay(value: number | undefined): number {
 
 /** Official InputHub bridge plus serialized optimistic Host autosave. */
 export class DraftComposerBridge extends Service {
-  private readonly lifecycle: Pick<DraftSessionLifecycle, "ensureShell">;
+  private readonly lifecycle: DraftComposerBridgeOptions["lifecycle"];
   private readonly drafts: DraftSessionsRemote;
   private readonly sessions: Pick<ISessions, "open" | "scope">;
   private readonly conversation: Pick<IConversation, "input">;
@@ -84,6 +87,13 @@ export class DraftComposerBridge extends Service {
         this.detach();
       },
       "draft-sessions.composer",
+    );
+    ctx.effect(
+      () =>
+        this.lifecycle.onBeforeFinalize((sessionId) => {
+          if (this.active?.draft.sessionId === sessionId) this.detach();
+        }),
+      "draft-sessions.composer-finalization",
     );
   }
 

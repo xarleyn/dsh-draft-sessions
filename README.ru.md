@@ -5,7 +5,7 @@
 Цель плагина — дать привычный по Cursor UX: можно подготовить несколько независимых задач, уйти из них без отправки и позже продолжить каждую с сохранённым текстом.
 
 > [!IMPORTANT]
-> Сейчас это ранняя alpha-версия. Уже реализованы Host-хранилище, восстановление blank Session, autosave composer и draft-first строки в sidebar. Отдельный muted-стиль и финальная семантика context menu/клавиатуры ещё в работе.
+> Сейчас это ранняя alpha-версия. Durable lifecycle черновика, composer bridge и взаимодействия в sidebar уже реализованы. Release-проверки после рестартов, в браузерах, на разных ОС и поддерживаемых версиях DSH ещё в работе.
 
 [English](README.md) · [Спецификация](SPEC.md) · [Архитектура](docs/architecture.md) · [План](ROADMAP.md)
 
@@ -23,9 +23,11 @@
 - Точное восстановление текста через официальный per-session InputHub.
 - Debounced optimistic autosave с обязательным flush перед переключением.
 - Создание через `Ctrl/Cmd + Shift + N` в текущем или недавнем Workspace.
-- Draft-shell строки перед обычными Sessions через pinned upstream workspace browser.
+- Muted draft-строки перед обычными Sessions через pinned upstream workspace browser.
+- Inline rename, duplicate, подтверждаемое удаление, клавиатурная навигация и ограниченный drag reorder.
+- Безопасное удаление активного draft с финальным autosave flush и восстановлением после отказа.
 - Безопасный fallback к штатному browser, если replacement нельзя активировать.
-- Unit-тесты persistence, concurrency, limits, deletion и recovery.
+- Unit- и DOM-тесты persistence, concurrency, lifecycle, composer и sidebar.
 
 Текущий код не отправляет prompt, не изменяет историю обычных Sessions и не удаляет blank Sessions.
 
@@ -56,6 +58,26 @@ dsh --profile web --dump-config
 ```bash
 dsh plugin --profile web remove dsh-draft-sessions
 ```
+
+## Релизы
+
+Релизы собираются из существующих SemVer-тегов с префиксом `v` ручным [Release workflow](.github/workflows/release.yml). Workflow делает checkout точного тега, запускает полный quality gate, подставляет в пакет версию из тега, создаёт npm tarball и SHA-256 checksum, проверяет чистую установку tarball, загружает Actions artifact и оформляет GitHub Release с автоматически сгенерированными notes.
+
+Maintainer может запустить его через **Actions → Release → Run workflow** или GitHub CLI:
+
+```bash
+git tag -a v0.1.0-rc.1 -m "v0.1.0-rc.1"
+git push origin v0.1.0-rc.1
+gh workflow run release.yml -f tag=v0.1.0-rc.1 -f publish_npm=false
+```
+
+Prerelease-теги публикуются в npm dist-tag `next`, стабильные — в `latest`. Публикация в npm по умолчанию выключена. Для включения opt-in job нужно:
+
+1. Один раз опубликовать пакет в npm вручную, если его ещё не существует.
+2. Настроить npm trusted publishing для этого GitHub-репозитория, файла `release.yml`, environment `npm` и действия `npm publish`.
+3. Создать защищённый GitHub environment `npm` и запустить workflow с `publish_npm=true`.
+
+Publish job использует GitHub OIDC вместо долгоживущего npm token. GitHub Release всегда создаётся до попытки публикации в npm.
 
 ## Настройки
 

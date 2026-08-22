@@ -35,6 +35,7 @@
 
 ## Milestone 5 — compatibility and release
 
+- [x] Manual tag-driven GitHub Release workflow with opt-in npm publishing
 - [ ] Browser reload E2E
 - [ ] Host restart/rebind E2E
 - [ ] Accepted/rejected Send E2E

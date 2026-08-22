@@ -5,7 +5,7 @@ Persistent, unsent future conversations for [DeepSeek Harness](https://github.co
 `dsh-draft-sessions` is building the Cursor-like workflow where you can prepare several independent tasks, leave them unsent, and return to each task later without starting an agent.
 
 > [!IMPORTANT]
-> This repository is an early alpha. Durable storage, blank Session recovery, composer autosave, and draft-first sidebar rows are implemented. Dedicated muted row styling and final context-menu/keyboard behavior are still pending.
+> This repository is an early alpha. The durable draft lifecycle, composer bridge, and sidebar interactions are implemented. Release qualification across restarts, browsers, platforms, and supported DSH versions is still in progress.
 
 [Русская версия](README.ru.md) · [Specification](SPEC.md) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md)
 
@@ -43,9 +43,11 @@ flowchart LR
 - Exact composer restore through the official per-session InputHub facade.
 - Debounced optimistic autosave with a mandatory pre-switch flush.
 - `Ctrl/Cmd + Shift + N` creation in the current or recent Workspace.
-- Draft shells projected before ordinary Session rows through the pinned upstream workspace browser.
+- Muted draft rows before ordinary Sessions through the pinned upstream workspace browser.
+- Inline rename, duplicate, confirmed delete, keyboard navigation, and bounded drag reorder.
+- Safe active-draft deletion with a final autosave flush and recovery after a rejected delete.
 - Compatibility fallback to the untouched upstream browser when replacement activation is unsafe.
-- Unit coverage for persistence, concurrency, limits, deletion, and recovery.
+- Unit and DOM coverage for persistence, concurrency, lifecycle, composer, and sidebar behavior.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.
 
@@ -80,6 +82,26 @@ Remove the linked package with:
 ```bash
 dsh plugin --profile web remove dsh-draft-sessions
 ```
+
+## Releases
+
+Releases are built from existing `v`-prefixed SemVer tags by the manual [Release workflow](.github/workflows/release.yml). The workflow checks out the exact tag, runs the full quality gate, replaces the package version with the tag version, creates an npm tarball and SHA-256 checksum, smoke-tests a clean tarball install, uploads the workflow artifact, and creates a GitHub Release with generated notes.
+
+Maintainers can start it from **Actions → Release → Run workflow**, or with GitHub CLI:
+
+```bash
+git tag -a v0.1.0-rc.1 -m "v0.1.0-rc.1"
+git push origin v0.1.0-rc.1
+gh workflow run release.yml -f tag=v0.1.0-rc.1 -f publish_npm=false
+```
+
+Prerelease tags publish to the npm `next` dist-tag; stable tags use `latest`. npm publication is disabled by default. To enable the opt-in publish job:
+
+1. Bootstrap the package on npm if it has not been published before.
+2. Configure npm trusted publishing for this GitHub repository, workflow filename `release.yml`, environment `npm`, and the `npm publish` action.
+3. Create the protected GitHub environment named `npm`, then run the workflow with `publish_npm=true`.
+
+The publish job uses GitHub OIDC instead of a long-lived npm token. A GitHub Release is always created before npm publication is attempted.
 
 ## Configuration
 

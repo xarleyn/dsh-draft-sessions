@@ -49,25 +49,28 @@ export const inject = [
 /** Mount the strict Remote namespace and its blank-Session lifecycle bridge. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const dispose = await ctx.remote.$mount(draftSessionsRemote);
-  const sidebar = new DraftSidebarSource(ctx);
-  const lifecycle = new DraftSessionLifecycle(ctx, {
-    drafts: ctx.remote.draftSessions,
-    sessions: ctx.connection.api.sessions,
-    sidebar,
+  await ctx.inject(["remote.draftSessions"], (remoteCtx) => {
+    const drafts = remoteCtx.remote.draftSessions;
+    const sidebar = new DraftSidebarSource(remoteCtx, drafts);
+    const lifecycle = new DraftSessionLifecycle(remoteCtx, {
+      drafts,
+      sessions: remoteCtx.connection.api.sessions,
+      sidebar,
+    });
+    const composer = new DraftComposerBridge(remoteCtx, {
+      lifecycle,
+      drafts,
+      sessions: remoteCtx.sessions,
+      conversation: remoteCtx.conversation,
+      sidebar,
+    });
+    new DraftShortcutController(remoteCtx, {
+      lifecycle,
+      composer,
+      sessions: remoteCtx.sessions,
+      workspaces: remoteCtx.workspaces,
+    });
+    activateWorkspaceReplacement(remoteCtx, sidebar);
   });
-  const composer = new DraftComposerBridge(ctx, {
-    lifecycle,
-    drafts: ctx.remote.draftSessions,
-    sessions: ctx.sessions,
-    conversation: ctx.conversation,
-    sidebar,
-  });
-  new DraftShortcutController(ctx, {
-    lifecycle,
-    composer,
-    sessions: ctx.sessions,
-    workspaces: ctx.workspaces,
-  });
-  activateWorkspaceReplacement(ctx, sidebar);
   return dispose;
 }

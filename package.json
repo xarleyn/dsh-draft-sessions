@@ -2,6 +2,14 @@
   "name": "dsh-draft-sessions",
   "version": "0.1.0-alpha.0",
   "description": "Persistent unsent draft sessions for DeepSeek Harness",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xarleyn/dsh-draft-sessions.git"
+  },
+  "homepage": "https://github.com/xarleyn/dsh-draft-sessions#readme",
+  "bugs": {
+    "url": "https://github.com/xarleyn/dsh-draft-sessions/issues"
+  },
   "packageManager": "pnpm@11.22.0",
   "type": "module",
   "main": "lib/index.js",

@@ -1,0 +1,164 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing SemVer tag to release (for example v0.1.0-rc.1)
+        required: true
+        type: string
+      publish_npm:
+        description: Publish the built tarball to npm after creating the GitHub Release
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
+      npm_tag: ${{ steps.metadata.outputs.npm_tag }}
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify exact tag checkout
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          if [[ "$(git tag --points-at HEAD --list "$RELEASE_TAG")" != "$RELEASE_TAG" ]]; then
+            echo "HEAD is not exactly tagged as $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run release checks
+        run: pnpm check
+
+      - name: Apply version from tag
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: node scripts/prepare-release.mjs "$RELEASE_TAG" --write >> "$GITHUB_OUTPUT"
+
+      - name: Pack npm artifact
+        shell: bash
+        run: |
+          mkdir release
+          pnpm pack --pack-destination release
+          package="$(find release -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          if [[ -z "$package" ]]; then
+            echo "pnpm pack did not create a tarball" >&2
+            exit 1
+          fi
+          package_name="$(basename "$package")"
+          (cd release && sha256sum "$package_name" > "$package_name.sha256")
+
+      - name: Smoke-test packed install
+        shell: bash
+        run: |
+          package="$(realpath "$(find release -maxdepth 1 -type f -name '*.tgz' -print -quit)")"
+          smoke="$(mktemp -d)"
+          cd "$smoke"
+          npm init --yes >/dev/null
+          npm install --ignore-scripts --omit=peer --package-lock=false "$package"
+          test -f node_modules/dsh-draft-sessions/lib/client.js
+          test -f node_modules/dsh-draft-sessions/lib/index.js
+          test -f node_modules/dsh-draft-sessions/cordis.patch.yml
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dsh-draft-sessions-${{ steps.metadata.outputs.version }}
+          path: release/*
+          if-no-files-found: error
+          compression-level: 0
+
+  github-release:
+    name: Create GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: dsh-draft-sessions-${{ needs.package.outputs.version }}
+          path: release
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ needs.package.outputs.prerelease }}
+        shell: bash
+        run: |
+          args=("$RELEASE_TAG" release/* --verify-tag --generate-notes --title "$RELEASE_TAG")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "${args[@]}"
+
+  npm-publish:
+    name: Publish to npm
+    if: ${{ inputs.publish_npm }}
+    needs: [package, github-release]
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: dsh-draft-sessions-${{ needs.package.outputs.version }}
+          path: release
+
+      - name: Verify npm supports trusted publishing
+        shell: bash
+        run: |
+          node -e 'const [major, minor] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && minor < 5)) process.exit(1)' "$(npm --version)"
+
+      - name: Publish package with npm trusted publishing
+        env:
+          NPM_TAG: ${{ needs.package.outputs.npm_tag }}
+        shell: bash
+        run: npm publish "$(find release -maxdepth 1 -type f -name '*.tgz' -print -quit)" --access public --tag "$NPM_TAG"

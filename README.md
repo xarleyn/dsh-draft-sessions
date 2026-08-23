@@ -42,9 +42,9 @@ flowchart LR
 - Rejected Send and blank slash-command preservation.
 - Exact composer restore through the official per-session InputHub facade.
 - Debounced optimistic autosave with a mandatory pre-switch flush.
-- `Ctrl/Cmd + Shift + N` creation in the current or recent Workspace.
+- Draft creation from the Drafts `+` action or `Ctrl/Cmd + Shift + N`; both flush the active draft before opening a distinct one.
 - Muted draft rows before ordinary Sessions through the additive `sidebar.workspaces.before` slot.
-- Inline rename, duplicate, confirmed delete, keyboard navigation, and bounded drag reorder.
+- Portaled row menus, inline rename, duplicate, confirmed delete, keyboard navigation, and bounded drag reorder.
 - Safe active-draft deletion with a final autosave flush and recovery after a rejected delete.
 - Slot-local shell exclusion that leaves the active stock or Archive Manager browser untouched.
 - Unit and DOM coverage for persistence, concurrency, lifecycle, composer, and sidebar behavior.

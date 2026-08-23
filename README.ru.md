@@ -22,9 +22,9 @@
 - Сохранение draft при отклонённом Send и blank slash-командах.
 - Точное восстановление текста через официальный per-session InputHub.
 - Debounced optimistic autosave с обязательным flush перед переключением.
-- Создание через `Ctrl/Cmd + Shift + N` в текущем или недавнем Workspace.
+- Создание через `+` в секции Drafts или `Ctrl/Cmd + Shift + N`; оба действия сначала сохраняют активный draft, затем открывают отдельный новый.
 - Muted draft-строки перед обычными Sessions через аддитивный slot `sidebar.workspaces.before`.
-- Inline rename, duplicate, подтверждаемое удаление, клавиатурная навигация и ограниченный drag reorder.
+- Вынесенные поверх панелей row-меню, inline rename, duplicate, подтверждаемое удаление, клавиатурная навигация и ограниченный drag reorder.
 - Безопасное удаление активного draft с финальным autosave flush и восстановлением после отказа.
 - Slot-local исключение backing shell, не изменяющее активный штатный browser или Archive Manager.
 - Unit- и DOM-тесты persistence, concurrency, lifecycle, composer и sidebar.

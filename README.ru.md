@@ -9,6 +9,26 @@
 
 [English](README.md) · [Спецификация](SPEC.md) · [Архитектура](docs/architecture.md) · [План](ROADMAP.md)
 
+## Как это выглядит
+
+### С `@michengai/dsh-automation`
+
+Automation предоставляет опциональный host для совместных вкладок. Когда плагин установлен и активен, Draft Sessions обнаруживает `__dshNativeTabs@1` и добавляет `Drafts` между `Tasks` и `Scheduled`. Жёсткой зависимости от Automation и требований к порядку загрузки нет.
+
+![Три независимых черновика в отдельной вкладке DeepSeek Harness](docs/images/draft-sessions-hero.png)
+
+### На штатном DeepSeek Harness
+
+Без Automation или другого совместимого tab host штатный browser workspaces и sessions остаётся без изменений. Draft Sessions добавляет кнопку в footer; по нажатию тот же список черновиков открывается в popover.
+
+![Кнопка Draft Sessions и popover на штатном DeepSeek Harness](docs/images/draft-sessions-stock-fallback.jpg)
+
+Меню строки работает одинаково в обоих режимах и отображается поверх sidebar без дополнительного скролла:
+
+<p align="center">
+  <img src="docs/images/draft-sessions-actions.png" width="360" alt="Действия с черновиком поверх sidebar без обрезки и дополнительного скролла" />
+</p>
+
 ## Что уже реализовано
 
 - Host-backed JSON-хранилище в `$DSH_HOME/storages/dsh-draft-sessions/drafts.json`.

@@ -1,24 +1,12 @@
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 
 const compatibility = JSON.parse(
   await readFile(new URL("../compatibility.json", import.meta.url), "utf8"),
 );
-const expected =
-  compatibility.deepseekHarness.packages[
-    "@deepseek-ai/dsh-client-ui-workspace"
-  ];
-const installed = JSON.parse(
-  await readFile(
-    fileURLToPath(
-      import.meta.resolve("@deepseek-ai/dsh-client-ui-workspace/package.json"),
-    ),
-    "utf8",
-  ),
-).version;
-
-if (installed !== expected) {
+const required = compatibility.deepseekHarness.requiredClientFeatures;
+const expected = ["sidebar.workspaces.before", "slots.excludeSessionRows"];
+if (JSON.stringify(required) !== JSON.stringify(expected)) {
   throw new Error(
-    `ui-workspace compatibility mismatch: expected ${expected}, installed ${installed}`,
+    `client feature contract mismatch: expected ${expected.join(", ")}`,
   );
 }

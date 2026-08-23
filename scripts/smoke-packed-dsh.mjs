@@ -551,14 +551,13 @@ try {
   if (!clientBundle.includes('id: "dsh-draft-sessions"')) {
     throw new Error("DSH did not serve the packed client factory");
   }
-  if (
-    clientBundle.includes(
-      'require("@deepseek-ai/dsh-client-ui-workspace/client")',
-    )
-  ) {
+  if (clientBundle.includes("dsh-client-ui-workspace")) {
     throw new Error(
-      "served client factory contains a workspace runtime require",
+      "served client factory contains a workspace-browser implementation",
     );
+  }
+  if (!clientBundle.includes('"sidebar.workspaces.before"')) {
+    throw new Error("served client factory lacks the additive draft-row seat");
   }
   await rpc(origin, "draftSessions/list", {}, true);
   await mkdir(workspacePath, { recursive: true });

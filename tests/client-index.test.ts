@@ -5,7 +5,7 @@ const observed = vi.hoisted(() => ({
   lifecycle: vi.fn(),
   composer: vi.fn(),
   shortcut: vi.fn(),
-  replacement: vi.fn(),
+  contribution: vi.fn(),
 }));
 
 vi.mock("../src/client/sidebar.js", () => ({
@@ -41,8 +41,8 @@ vi.mock("../src/client/shortcut.js", () => ({
   },
 }));
 
-vi.mock("../src/client/workspace-replacement.js", () => ({
-  activateWorkspaceReplacement: observed.replacement,
+vi.mock("../src/client/workspace-contribution.js", () => ({
+  activateWorkspaceContribution: observed.contribution,
 }));
 
 import { apply } from "../src/client/index.js";
@@ -106,7 +106,7 @@ describe("client activation", () => {
       sessions: readyCtx.sessions,
       workspaces: readyCtx.workspaces,
     });
-    expect(observed.replacement).toHaveBeenCalledWith(
+    expect(observed.contribution).toHaveBeenCalledWith(
       readyCtx,
       expect.anything(),
     );

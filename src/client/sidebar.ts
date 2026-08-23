@@ -1,31 +1,7 @@
 import { Service, type Context } from "@deepseek-ai/cordis";
-import type {
-  SessionId,
-  SessionListState,
-  WorkspaceListState,
-} from "@deepseek-ai/dsh-client-runtime/client";
+import type { SessionId } from "@deepseek-ai/dsh-client-runtime/client";
 import type { UpdateDraftRequest } from "../shared/types.js";
-import { displayDraftTitle, type DraftSession } from "../shared/types.js";
-
-export interface DraftSidebarNode {
-  readonly kind: "draft";
-  readonly key: `draft:${string}`;
-  readonly draftId: string;
-  readonly sessionId: string | null;
-  readonly title: string;
-  readonly muted: true;
-  readonly selected: boolean;
-  readonly state: DraftSession["state"];
-  readonly lastError?: string;
-}
-
-export interface SessionSidebarNode {
-  readonly kind: "session";
-  readonly key: `session:${string}`;
-  readonly sessionId: string;
-}
-
-export type SidebarNode = DraftSidebarNode | SessionSidebarNode;
+import type { DraftSession } from "../shared/types.js";
 
 type DraftListRemote = {
   list(request: {
@@ -36,10 +12,11 @@ type DraftListRemote = {
   >;
 };
 
-/** Observable Host-backed draft list used by the workspace replacement. */
+/** Observable Host-backed draft list used by the sidebar contribution. */
 export class DraftSidebarSource extends Service {
   private readonly drafts: DraftListRemote;
   private snapshot: readonly DraftSession[] = [];
+  private shellSnapshot: ReadonlySet<SessionId> = new Set();
   private readonly listeners = new Set<() => void>();
   private generation = 0;
 
@@ -63,6 +40,9 @@ export class DraftSidebarSource extends Service {
   }
 
   getSnapshot = (): readonly DraftSession[] => this.snapshot;
+
+  /** Stable observable snapshot of blank Session shells owned by drafts. */
+  getShellSnapshot = (): ReadonlySet<SessionId> => this.shellSnapshot;
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -91,16 +71,20 @@ export class DraftSidebarSource extends Service {
 
   private publish(next: readonly DraftSession[]): void {
     this.snapshot = [...next];
+    this.shellSnapshot = draftShellSessionIds(this.snapshot);
     for (const listener of this.listeners) listener();
   }
 }
 
-export interface ProjectWorkspaceSidebarOptions {
-  readonly workspaceId: string;
-  readonly drafts: readonly DraftSession[];
-  readonly sessionIds: readonly string[];
-  readonly currentSessionId?: string;
-  readonly untitled?: string;
+/** Collect the blank execution Session ids owned by drafts. */
+export function draftShellSessionIds(
+  drafts: readonly DraftSession[],
+): ReadonlySet<SessionId> {
+  return new Set(
+    drafts.flatMap((draft) =>
+      draft.sessionId === null ? [] : [draft.sessionId as SessionId],
+    ),
+  );
 }
 
 function orderedDrafts(drafts: readonly DraftSession[]): DraftSession[] {
@@ -110,149 +94,6 @@ function orderedDrafts(drafts: readonly DraftSession[]): DraftSession[] {
       left.order - right.order ||
       left.id.localeCompare(right.id),
   );
-}
-
-export function projectDraftSessions(
-  state: SessionListState,
-  drafts: readonly DraftSession[],
-): SessionListState {
-  const byId = { ...state.byId };
-  let changed = false;
-  for (const draft of drafts) {
-    if (draft.sessionId === null) continue;
-    const id = draft.sessionId as SessionId;
-    const summary = byId[id];
-    if (summary === undefined) continue;
-    const title = displayDraftTitle(draft) || "Untitled draft";
-    byId[id] = {
-      ...summary,
-      blank: false,
-      displayTitle: `${title} · Draft`,
-      updatedAt: draft.updatedAt,
-    };
-    changed = true;
-  }
-  return changed ? { ...state, byId } : state;
-}
-
-export function projectDraftWorkspaces(
-  state: WorkspaceListState,
-  drafts: readonly DraftSession[],
-): WorkspaceListState {
-  const shellIds = new Set(
-    drafts.flatMap((draft) =>
-      draft.sessionId === null ? [] : [draft.sessionId],
-    ),
-  );
-  const items = state.items.map((workspace) => {
-    const leading = orderedDrafts(
-      drafts.filter((draft) => draft.workspaceId === workspace.workspaceId),
-    )
-      .filter(
-        (draft): draft is DraftSession & { sessionId: string } =>
-          draft.sessionId !== null,
-      )
-      .map((draft) => draft.sessionId as SessionId);
-    return {
-      ...workspace,
-      sessionIds: [
-        ...leading,
-        ...workspace.sessionIds.filter((id: SessionId) => !shellIds.has(id)),
-      ],
-    };
-  });
-  return { ...state, items };
-}
-
-/** Remove draft execution shells from the ordinary upstream Session browser. */
-export function projectOrdinarySessions(
-  state: SessionListState,
-  drafts: readonly DraftSession[],
-): SessionListState {
-  const shells = new Set(
-    drafts.flatMap((draft) =>
-      draft.sessionId === null ? [] : [draft.sessionId],
-    ),
-  );
-  if (shells.size === 0) return state;
-  const byId = { ...state.byId };
-  for (const shell of shells) delete byId[shell as SessionId];
-  return {
-    ...state,
-    ids: state.ids.filter((id) => !shells.has(id)),
-    byId,
-    current:
-      state.current !== undefined && shells.has(state.current)
-        ? undefined
-        : state.current,
-  };
-}
-
-/** Remove draft shell accounting ids while retaining every Workspace fact. */
-export function projectOrdinaryWorkspaces(
-  state: WorkspaceListState,
-  drafts: readonly DraftSession[],
-): WorkspaceListState {
-  const shells = new Set(
-    drafts.flatMap((draft) =>
-      draft.sessionId === null ? [] : [draft.sessionId],
-    ),
-  );
-  if (shells.size === 0) return state;
-  return {
-    ...state,
-    items: state.items.map((workspace) => ({
-      ...workspace,
-      sessionIds: workspace.sessionIds.filter(
-        (id: SessionId) => !shells.has(id),
-      ),
-    })),
-  };
-}
-
-/** Draft-first Workspace rows without duplicate backing blank Sessions. */
-export function projectWorkspaceSidebar({
-  workspaceId,
-  drafts,
-  sessionIds,
-  currentSessionId,
-  untitled = "Untitled draft",
-}: ProjectWorkspaceSidebarOptions): SidebarNode[] {
-  const workspaceDrafts = drafts.filter(
-    (draft) => draft.workspaceId === workspaceId,
-  );
-  const shells = new Set(
-    workspaceDrafts.flatMap((draft) =>
-      draft.sessionId === null ? [] : [draft.sessionId],
-    ),
-  );
-  const draftNodes: DraftSidebarNode[] = orderedDrafts(workspaceDrafts).map(
-    (draft) => {
-      const title = displayDraftTitle(draft);
-      return {
-        kind: "draft",
-        key: `draft:${draft.id}`,
-        draftId: draft.id,
-        sessionId: draft.sessionId,
-        title: title === "" ? untitled : title,
-        muted: true,
-        selected:
-          draft.sessionId !== null && draft.sessionId === currentSessionId,
-        state: draft.state,
-        ...(draft.lastError === undefined
-          ? {}
-          : { lastError: draft.lastError }),
-      };
-    },
-  );
-  const sessionNodes: SessionSidebarNode[] = sessionIds
-    .filter((sessionId) => !shells.has(sessionId))
-    .map((sessionId) => ({
-      kind: "session",
-      key: `session:${sessionId}`,
-      sessionId,
-    }));
-  return [...draftNodes, ...sessionNodes];
 }
 
 /** Build a stable, zero-based optimistic reorder update set. */

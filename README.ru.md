@@ -23,10 +23,10 @@
 - Точное восстановление текста через официальный per-session InputHub.
 - Debounced optimistic autosave с обязательным flush перед переключением.
 - Создание через `Ctrl/Cmd + Shift + N` в текущем или недавнем Workspace.
-- Muted draft-строки перед обычными Sessions через pinned upstream workspace browser.
+- Muted draft-строки перед обычными Sessions через аддитивный slot `sidebar.workspaces.before`.
 - Inline rename, duplicate, подтверждаемое удаление, клавиатурная навигация и ограниченный drag reorder.
 - Безопасное удаление активного draft с финальным autosave flush и восстановлением после отказа.
-- Безопасный fallback к штатному browser, если replacement нельзя активировать.
+- Slot-local исключение backing shell, не изменяющее активный штатный browser или Archive Manager.
 - Unit- и DOM-тесты persistence, concurrency, lifecycle, composer и sidebar.
 
 Текущий код не отправляет prompt, не изменяет историю обычных Sessions и не удаляет blank Sessions.
@@ -35,7 +35,9 @@
 
 - Node.js `^22.19.0` или `>=24.0.0`
 - pnpm 11
-- DeepSeek Harness `next`: `>=0.1.1-rc.2 <0.2.0`
+- Сборка DeepSeek Harness с `sidebar.workspaces.before` и `slots.excludeSessionRows`
+
+Host API остаётся совместимым с диапазоном `next` `>=0.1.1-rc.2 <0.2.0`, но опубликованный клиент rc.2 ещё не содержит две функции композиции. Контракт функций записан в `compatibility.json`; на старом клиенте активация завершается явной ошибкой вместо незаметного исчезновения draft-строк.
 
 ## Локальная разработка
 
@@ -97,7 +99,8 @@ Publish job использует GitHub OIDC вместо долгоживуще
 - Создание draft никогда не запускает модель.
 - Draft превращается в обычную Session только после принятого первого prompt.
 - Attachments отложены до v2.
-- Для точного UX внутри списка Sessions понадобится тонкий version-tracked replacement `ui-workspace`, потому что публичного row slot пока нет.
+- Draft-строки композируются рядом с single workspace-browser occupant; плагин не отключает и не встраивает `ui-workspace`.
+- Backing blank Sessions исключаются только из slot workspace browser, поэтому стандартный composer по-прежнему получает настоящую текущую Session.
 
 Полные критерии находятся в [SPEC.md](SPEC.md), последовательность следующих этапов — в [ROADMAP.md](ROADMAP.md).
 

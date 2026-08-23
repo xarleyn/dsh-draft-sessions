@@ -43,10 +43,10 @@ flowchart LR
 - Exact composer restore through the official per-session InputHub facade.
 - Debounced optimistic autosave with a mandatory pre-switch flush.
 - `Ctrl/Cmd + Shift + N` creation in the current or recent Workspace.
-- Muted draft rows before ordinary Sessions through the pinned upstream workspace browser.
+- Muted draft rows before ordinary Sessions through the additive `sidebar.workspaces.before` slot.
 - Inline rename, duplicate, confirmed delete, keyboard navigation, and bounded drag reorder.
 - Safe active-draft deletion with a final autosave flush and recovery after a rejected delete.
-- Compatibility fallback to the untouched upstream browser when replacement activation is unsafe.
+- Slot-local shell exclusion that leaves the active stock or Archive Manager browser untouched.
 - Unit and DOM coverage for persistence, concurrency, lifecycle, composer, and sidebar behavior.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.
@@ -55,9 +55,9 @@ The current implementation deliberately does not send prompts, modify ordinary S
 
 - Node.js `^22.19.0` or `>=24.0.0`
 - pnpm 11
-- DeepSeek Harness `next`, currently `>=0.1.1-rc.2 <0.2.0`
+- A DeepSeek Harness build containing `sidebar.workspaces.before` and `slots.excludeSessionRows`
 
-The `next` requirement is intentional: the plugin uses the current Typert Remote API published by DSH.
+The Host API remains compatible with the `next` range `>=0.1.1-rc.2 <0.2.0`, but the published rc.2 client does not contain the two composition features yet. `compatibility.json` records this feature contract; activation fails loudly on an older client instead of silently hiding draft rows.
 
 ## Development
 
@@ -154,7 +154,8 @@ The lifecycle service owns blank Session creation and recovery. The lower-level 
 - The first accepted prompt, not the Send button click, is the conversion boundary.
 - Ordinary DSH Sessions remain owned entirely by DSH.
 - Attachments are out of scope for v1; text and textual `@file` references come first.
-- The upstream workspace browser currently has no public row-extension seam, so exact sidebar integration requires a small, version-tracked replacement package.
+- Draft rows compose beside the single workspace-browser occupant; the plugin never disables or embeds `ui-workspace`.
+- Backing blank Sessions are excluded only from the workspace-browser slot, so the standard composer still receives the real current Session.
 
 See [SPEC.md](SPEC.md) for acceptance criteria and [docs/architecture.md](docs/architecture.md) for the lifecycle.
 

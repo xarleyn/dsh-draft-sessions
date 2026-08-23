@@ -48,15 +48,15 @@ Ordinary edits use a 350 ms debounce and serialized optimistic `draftSessions.up
 
 `DraftShortcutController` owns the global `Ctrl/Cmd + Shift + N` action. It resolves the current Session's Workspace, falling back to the runtime's recent Workspace, flushes the active composer, and then creates and opens a distinct lifecycle draft. One creation may be in flight at a time.
 
-### Workspace browser replacement
+### Composable workspace sidebar
 
-The stock workspace browser intentionally hides every blank Session except the current placeholder and does not expose a public row extension seam. Exact Cursor-like placement therefore needs a thin, version-tracked replacement of the presentation package. Session, Agent, persistence, and prompt execution remain upstream DSH services.
+The Harness sidebar owns an additive root-scoped `sidebar.workspaces.before` list slot immediately before its single `sidebar.workspaces` occupant. `dsh-draft-sessions` registers `DraftSidebarView` into that list through declaration-aware `slots.inject()`. The stock browser, Archive Manager replacement, or another deployment browser remains the sole occupant and retains search, dialogs, ordering, ordinary rows, and child declarations.
 
-The replacement contract is pinned to `@deepseek-ai/dsh-client-ui-workspace@0.1.1-rc.2` in `compatibility.json`. The package smoke gate resolves the installed manifest and fails on a mismatch so an upstream presentation change cannot silently activate an unreviewed replacement.
+Each DraftRecord still owns a blank execution Session. The plugin contributes their ids to `slots.excludeSessionRows("sidebar.workspaces", source)`. Harness unions all contributors and projects `useSessions` plus `useWorkspaces` only for that slot, removing duplicate shell rows and their Workspace membership without changing the object layers or current Session provider. The additive draft component reads the unprojected standard hooks, so it can highlight and operate on the current draft while the composer remains session-bound.
 
-The draft-aware projection places pinned and manually ordered DraftRecords before ordinary Session ids, removes their backing blank Session ids from the ordinary rows, and retains shell-less or errored drafts as actionable rows. Reorder planning normalizes the draft account to stable zero-based positions and carries each record's optimistic revision.
+Both integrations wait for their owner declarations independently, so Loader and client activation order do not affect the result. The plugin does not inspect `sidebar.workspaces` entries, change priority, disable `ui-workspace`, copy an occupant's store or child declarations, or embed another client bundle. Harness builds without the additive slot and exclusion API fail at activation with an explicit compatibility error.
 
-The bundle disables the stock `ui-workspace` Cordis row and invokes that exact pinned package through a narrow registration proxy. Since disabled Loader rows do not enter the browser module table, the build extracts the pinned upstream client factory body and inlines it into `dsh-draft-sessions/client.js`. The resulting artifact has neither a runtime `<package>/client` require nor a second module registration, so cold loading and HMR do not depend on a disabled graph row. The package smoke gate verifies those properties. The proxy reuses the upstream browser component, store, locale, directory-flow child slot, search, dialogs, and every ordinary Session callback; only the Session/Workspace selector hooks and actions addressing known draft shell ids are adapted. If the stock row is already active, or its registration no longer matches the pinned contract, the plugin skips adaptation or registers the untouched upstream component. The sidebar therefore degrades to normal DSH behavior instead of leaving its single-occupant slot empty.
+The draft view places pinned and manually ordered DraftRecords before the browser, retains shell-less or errored drafts as actionable rows, and normalizes reorder updates to stable zero-based positions with optimistic revisions.
 
 ## Recovery rules
 

@@ -27,11 +27,11 @@
 
 ## Milestone 4 — sidebar integration
 
-- [x] Track the current `ui-workspace` package version
+- [x] Use the additive Harness sidebar row slot
 - [x] Add draft nodes above ordinary Session rows
 - [x] Muted state, context menu, keyboard navigation, and drag reorder
-- [x] Preserve all upstream ordinary Session behavior
-- [x] Document the compatibility fallback if replacement activation fails
+- [x] Preserve the active workspace browser and ordinary Session behavior
+- [x] Compose with Archive Manager independently of activation order
 
 ## Milestone 5 — compatibility and release
 

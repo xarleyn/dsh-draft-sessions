@@ -24,6 +24,6 @@ Describe the user-visible outcome, the recovery behavior, and any DSH package/ve
 - Never treat a button click as proof the Host accepted a prompt.
 - Never store draft order in ordinary Workspace Session ordering.
 - Never silently reset corrupt durable data.
-- Prefer public DSH contracts; isolate unavoidable `ui-workspace` coupling.
+- Prefer public DSH contracts and additive slots; do not replace a foreign single-slot occupant.
 
 By participating, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

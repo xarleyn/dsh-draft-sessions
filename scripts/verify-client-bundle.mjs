@@ -14,11 +14,14 @@ if (client.includes("dsh-client-ui-workspace")) {
     "client bundle must not embed or require a workspace-browser implementation",
   );
 }
-if (!client.includes('"sidebar.workspaces.before"')) {
-  throw new Error("client bundle is missing the additive draft-row seat");
+if (!client.includes('"sidebar.footer.action"')) {
+  throw new Error("client bundle is missing the stock sidebar fallback");
 }
-if (!client.includes("excludeSessionRows")) {
-  throw new Error("client bundle is missing slot-local shell exclusion");
+if (!client.includes("__dshNativeTabs")) {
+  throw new Error("client bundle is missing native-tab cooperation");
+}
+if (client.includes('register({ name: "sidebar.workspaces"')) {
+  throw new Error("client bundle must not occupy the workspace-browser slot");
 }
 if (client.includes("upstream occupant")) {
   throw new Error("client bundle retains the obsolete occupant warning path");

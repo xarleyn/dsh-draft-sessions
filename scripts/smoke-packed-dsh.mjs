@@ -262,6 +262,22 @@ async function dismissOnboarding(page) {
   );
 }
 
+async function openDraftSurface(page) {
+  const tab = page.getByRole("tab", { name: "Drafts", exact: true });
+  if (await tab.isVisible().catch(() => false)) {
+    if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
+  } else {
+    const trigger = page.getByRole("button", { name: /^Drafts \(\d+\)$/ });
+    await trigger.waitFor({ state: "visible" });
+    if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+      await trigger.click();
+    }
+  }
+  await page
+    .getByRole("tree", { name: "Draft sessions" })
+    .waitFor({ state: "visible" });
+}
+
 async function createDraft(page, origin, text) {
   const before = await rpc(origin, "draftSessions/list", {}, true);
   const existingIds = new Set(before.map((draft) => draft.id));
@@ -281,6 +297,7 @@ async function createDraft(page, origin, text) {
   }, "draft shortcut materialization");
   await page.waitForTimeout(700);
   await dismissOnboarding(page);
+  await openDraftSurface(page);
   const untitled = page
     .getByRole("treeitem", { name: "Untitled draft, Draft", exact: true })
     .last();
@@ -321,8 +338,12 @@ async function browserE2e(origin) {
   const page = await browser.newPage();
   const browserErrors = [];
   let duringHostOutage = false;
+  let hostOutageGraceUntil = 0;
   const recordBrowserError = (message) =>
-    browserErrors.push({ message, duringHostOutage });
+    browserErrors.push({
+      message,
+      duringHostOutage: duringHostOutage || Date.now() < hostOutageGraceUntil,
+    });
   const formatBrowserErrors = (errors) =>
     errors.map((error) => error.message).join("\n");
   const withHostOutage = async (callback) => {
@@ -330,6 +351,7 @@ async function browserE2e(origin) {
     try {
       return await callback();
     } finally {
+      hostOutageGraceUntil = Date.now() + 2_000;
       duringHostOutage = false;
     }
   };
@@ -363,6 +385,7 @@ async function browserE2e(origin) {
   await page.getByRole("tree", { name: "Sessions" }).waitFor();
   await page.waitForTimeout(700);
   await dismissOnboarding(page);
+  await openDraftSurface(page);
   await page
     .getByRole("treeitem", { name: `${reloadText}, Draft`, exact: true })
     .waitFor();
@@ -392,6 +415,7 @@ async function browserE2e(origin) {
     await page.getByRole("tree", { name: "Sessions" }).waitFor();
     await page.waitForTimeout(700);
     await dismissOnboarding(page);
+    await openDraftSurface(page);
     await page
       .getByRole("treeitem", { name: `${reloadText}, Draft`, exact: true })
       .click();
@@ -447,6 +471,7 @@ async function browserE2e(origin) {
     await page.getByRole("tree", { name: "Sessions" }).waitFor();
     await page.waitForTimeout(700);
     await dismissOnboarding(page);
+    await openDraftSurface(page);
     await page
       .getByRole("treeitem", { name: `${rejectedText}, Draft`, exact: true })
       .waitFor();
@@ -556,8 +581,11 @@ try {
       "served client factory contains a workspace-browser implementation",
     );
   }
-  if (!clientBundle.includes('"sidebar.workspaces.before"')) {
-    throw new Error("served client factory lacks the additive draft-row seat");
+  if (!clientBundle.includes('"sidebar.footer.action"')) {
+    throw new Error("served client factory lacks the stock sidebar fallback");
+  }
+  if (!clientBundle.includes("__dshNativeTabs")) {
+    throw new Error("served client factory lacks native-tab cooperation");
   }
   await rpc(origin, "draftSessions/list", {}, true);
   await mkdir(workspacePath, { recursive: true });

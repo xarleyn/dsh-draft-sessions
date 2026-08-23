@@ -6,6 +6,7 @@ describe("packed browser error classification", () => {
     "Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING",
     "WebSocket connection failed: net::ERR_CONNECTION_REFUSED",
     "Failed to load resource: net::ERR_CONNECTION_RESET",
+    "WebSocket connection failed: Connection closed before receiving a handshake response",
   ])("allows host outage noise during a deliberate restart: %s", (message) => {
     expect(isExpectedBrowserError({ message, duringHostOutage: true })).toBe(
       true,

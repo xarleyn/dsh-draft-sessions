@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  NATIVE_TABS_KEY,
   activateWorkspaceContribution,
   createDraftWorkspaceContribution,
 } from "../src/client/workspace-contribution.js";
@@ -54,16 +55,31 @@ describe("workspace draft contribution", () => {
     vi.restoreAllMocks();
   });
 
-  it("composes with an existing workspace occupant without touching it", () => {
-    const occupant = { component: () => null };
+  it("adds a Drafts tab to an existing native tab host without replacing it", () => {
+    const removeTab = vi.fn();
+    const insert = vi.fn(() => removeTab);
+    const addSessionFilter = vi.fn(
+      (_filter: (sessionId: string) => boolean) => () => undefined,
+    );
+    const registry = {
+      version: 1,
+      officialTree: () => null,
+      sessionFilters: [],
+      getTabs: () => [],
+      subscribe: vi.fn(() => () => undefined),
+      insert,
+      addSessionFilter,
+    };
+    const component = () => null;
+    Object.assign(component, { [NATIVE_TABS_KEY]: registry });
+    const occupant = { component };
     const register = vi.fn(() => () => undefined);
-    const excludeSessionRows = vi.fn(() => () => undefined);
     const ctx = {
       slots: {
-        entries: (_name?: string) => [occupant],
+        entriesOfSlot: (_name?: string) => [occupant],
         inject: (_name: string, callback: () => () => void) => callback(),
         register,
-        excludeSessionRows,
+        subscribe: vi.fn(() => () => undefined),
       },
     };
     const source = {
@@ -75,25 +91,96 @@ describe("workspace draft contribution", () => {
     expect(activateWorkspaceContribution(ctx as never, source)).toBe(
       "activated",
     );
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "drafts",
+        label: "Drafts",
+        order: 20,
+        matchSession: expect.any(Function),
+        render: expect.any(Function),
+      }),
+    );
+    expect(addSessionFilter).toHaveBeenCalledOnce();
+    const keepSession = addSessionFilter.mock.calls[0]![0];
+    expect(keepSession("shell-a")).toBe(false);
+    expect(keepSession("ordinary-session")).toBe(true);
     expect(register).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "sidebar.workspaces.before",
+        name: "sidebar.footer.action",
         id: "dsh-draft-sessions",
       }),
       expect.any(Function),
     );
-    expect(excludeSessionRows).toHaveBeenCalledWith(
-      "sidebar.workspaces",
-      expect.objectContaining({ getSnapshot: expect.any(Function) }),
-    );
-    expect(ctx.slots.entries("sidebar.workspaces")).toEqual([occupant]);
+    expect(ctx.slots.entriesOfSlot("sidebar.workspaces")).toEqual([occupant]);
   });
 
-  it("fails loudly when the Harness composition seam is absent", () => {
-    const ctx = { slots: {} } as never;
-    expect(() => activateWorkspaceContribution(ctx, {} as never)).toThrow(
-      /composable sidebar session rows/,
+  it("falls back to the public footer action when no tab host exists", () => {
+    const register = vi.fn(() => () => undefined);
+    const ctx = {
+      slots: {
+        entriesOfSlot: () => [],
+        inject: (_name: string, callback: () => () => void) => callback(),
+        register,
+        subscribe: vi.fn(() => () => undefined),
+      },
+    };
+
+    expect(
+      activateWorkspaceContribution(
+        ctx as never,
+        {
+          getSnapshot: () => [],
+          getShellSnapshot: () => new Set(),
+          subscribe: vi.fn(() => () => undefined),
+        } as never,
+      ),
+    ).toBe("activated");
+    expect(register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "sidebar.footer.action",
+        id: "dsh-draft-sessions",
+      }),
+      expect.any(Function),
     );
+  });
+
+  it("discovers a tab host that activates after the draft plugin", () => {
+    vi.useFakeTimers();
+    const insert = vi.fn(() => () => undefined);
+    const occupant = { component: () => null };
+    const ctx = {
+      slots: {
+        entriesOfSlot: () => [occupant],
+        inject: (_name: string, callback: () => () => void) => callback(),
+        register: vi.fn(() => () => undefined),
+        subscribe: vi.fn(() => () => undefined),
+      },
+    };
+    activateWorkspaceContribution(
+      ctx as never,
+      {
+        getSnapshot: () => [],
+        getShellSnapshot: () => new Set(["shell-a"]),
+        subscribe: vi.fn(() => () => undefined),
+      } as never,
+    );
+    expect(insert).not.toHaveBeenCalled();
+
+    Object.assign(occupant.component, {
+      [NATIVE_TABS_KEY]: {
+        version: 1,
+        officialTree: occupant.component,
+        sessionFilters: [],
+        getTabs: () => [],
+        subscribe: vi.fn(() => () => undefined),
+        insert,
+        addSessionFilter: vi.fn(() => () => undefined),
+      },
+    });
+    vi.advanceTimersByTime(1_000);
+
+    expect(insert).toHaveBeenCalledOnce();
+    vi.useRealTimers();
   });
 
   it("flushes and clears the active composer before deleting its draft", async () => {

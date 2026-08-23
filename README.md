@@ -9,6 +9,18 @@ Persistent, unsent future conversations for [DeepSeek Harness](https://github.co
 
 [Русская версия](README.ru.md) · [Specification](SPEC.md) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md)
 
+## See it in action
+
+![Three independent draft sessions beside the standard DeepSeek Harness workspace browser](docs/images/draft-sessions-hero.png)
+
+<p align="center"><em>Keep several unsent tasks ready, switch between them, and continue using ordinary workspaces and sessions.</em></p>
+
+<p align="center">
+  <img src="docs/images/draft-sessions-actions.png" width="300" alt="Draft session actions rendered above the sidebar" />
+</p>
+
+<p align="center"><em>Create a distinct draft with <code>+</code>, then rename, duplicate, or delete it from the row menu.</em></p>
+
 ## The intended experience
 
 ```text

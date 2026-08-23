@@ -127,7 +127,11 @@ jobs:
           if [[ "$PRERELEASE" == "true" ]]; then
             args+=(--prerelease)
           fi
-          gh release create "${args[@]}"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/* --clobber
+          else
+            gh release create "${args[@]}"
+          fi
 
   npm-publish:
     name: Publish to npm
@@ -162,4 +166,10 @@ jobs:
         env:
           NPM_TAG: ${{ needs.package.outputs.npm_tag }}
         shell: bash
-        run: npm publish "$(find release -maxdepth 1 -type f -name '*.tgz' -print -quit)" --access public --tag "$NPM_TAG"
+        run: |
+          package="$(find release -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          if [[ -z "$package" ]]; then
+            echo "Release artifact does not contain an npm tarball" >&2
+            exit 1
+          fi
+          npm publish "$(realpath "$package")" --access public --tag "$NPM_TAG"

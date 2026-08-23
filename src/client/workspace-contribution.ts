@@ -124,6 +124,9 @@ export function createDraftWorkspaceContribution(
       drafts,
       currentSessionId,
       workspaceNames,
+      onCreate: async () => {
+        await ctx.draftShortcutController.create();
+      },
       onOpen: (draft) => {
         void ctx.draftComposerBridge.open(draft).catch((error: unknown) => {
           console.error("draft open failed", error);

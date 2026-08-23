@@ -2,16 +2,21 @@ import {
   createElement,
   Fragment,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type DragEvent,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { displayDraftTitle, type DraftSession } from "../shared/types.js";
 
 const CSS = `
 .dsd-panel{flex:none;max-height:min(42%,360px);overflow:auto;padding:0 8px 8px;border-bottom:1px solid var(--dsw-alias-border-l3)}
-.dsd-heading{padding:8px 8px 4px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;text-transform:uppercase;letter-spacing:.04em}
+.dsd-heading{display:flex;align-items:center;gap:8px;padding:8px 8px 4px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;text-transform:uppercase;letter-spacing:.04em}
+.dsd-heading-label{flex:1;min-width:0}
+.dsd-add{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:0;border-radius:4px;padding:0;background:transparent;color:var(--dsw-alias-label-tertiary);font:18px/1 sans-serif;cursor:pointer}
+.dsd-add:hover,.dsd-add:focus-visible{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover);outline:none}
 .dsd-row{position:relative;display:flex;align-items:center;gap:6px;height:32px;padding:0 8px;border-radius:8px;box-sizing:border-box;outline:none;color:var(--dsw-alias-label-secondary);cursor:pointer;user-select:none}
 .dsd-row:hover,.dsd-row:focus-visible,.dsd-row[data-selected=true],.dsd-row[data-menu=true]{background:var(--dsw-alias-interactive-bg-hover)}
 .dsd-row:focus-visible{box-shadow:inset 0 0 0 1px var(--dsw-alias-state-business-primary)}
@@ -23,7 +28,7 @@ const CSS = `
 .dsd-actions{position:relative;flex:none}
 .dsd-menu-button{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:0;border-radius:4px;padding:0;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}
 .dsd-menu-button:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
-.dsd-menu{position:absolute;z-index:20;right:0;top:24px;min-width:132px;padding:4px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-elevated,var(--dsw-alias-button-elevated-fill));box-shadow:var(--dsw-shadow-l2,0 8px 24px rgba(0,0,0,.18))}
+.dsd-menu{position:fixed;z-index:1100;min-width:132px;padding:4px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-elevated,var(--dsw-alias-button-elevated-fill));box-shadow:var(--dsw-shadow-l2,0 8px 24px rgba(0,0,0,.18))}
 .dsd-menu-item{display:block;width:100%;border:0;border-radius:5px;padding:6px 8px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;text-align:left;cursor:pointer}
 .dsd-menu-item:hover,.dsd-menu-item:focus-visible{background:var(--dsw-alias-interactive-bg-hover);outline:none}
 .dsd-menu-item[data-danger=true]{color:var(--dsw-alias-state-error-primary,#d84c4c)}
@@ -45,6 +50,7 @@ export interface DraftSidebarViewProps {
   readonly drafts: readonly DraftSession[];
   readonly currentSessionId?: string;
   readonly workspaceNames?: Readonly<Record<string, string>>;
+  readonly onCreate: () => Promise<void>;
   readonly onOpen: (draft: DraftSession) => void;
   readonly onRename: (draft: DraftSession, title: string) => Promise<void>;
   readonly onDuplicate: (draft: DraftSession) => Promise<void>;
@@ -102,6 +108,7 @@ export function DraftSidebarView({
   drafts,
   currentSessionId,
   workspaceNames = {},
+  onCreate,
   onOpen,
   onRename,
   onDuplicate,
@@ -115,6 +122,7 @@ export function DraftSidebarView({
   const [editingId, setEditingId] = useState<string>();
   const [renameText, setRenameText] = useState("");
   const [busyId, setBusyId] = useState<string>();
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string>();
   const [draggingId, setDraggingId] = useState<string>();
   const [drop, setDrop] = useState<{
@@ -122,6 +130,12 @@ export function DraftSidebarView({
     half: "before" | "after";
   }>();
   const refs = useRef(new Map<string, HTMLDivElement>());
+  const actionRefs = useRef(new Map<string, HTMLButtonElement>());
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    readonly top: number;
+    readonly right: number;
+  }>();
 
   useEffect(() => {
     if (activeId !== undefined && rows.some((row) => row.id === activeId)) {
@@ -129,6 +143,35 @@ export function DraftSidebarView({
     }
     setActiveId(rows[0]?.id);
   }, [activeId, rows]);
+
+  useLayoutEffect(() => {
+    if (menuId === undefined) {
+      setMenuPosition(undefined);
+      return;
+    }
+    const place = () => {
+      const trigger = actionRefs.current.get(menuId);
+      if (trigger === undefined) return;
+      const rect = trigger.getBoundingClientRect();
+      const panelHeight = menuRef.current?.offsetHeight ?? 0;
+      const below = rect.bottom + 4;
+      const top =
+        below + panelHeight <= window.innerHeight - 8
+          ? below
+          : Math.max(8, rect.top - panelHeight - 4);
+      setMenuPosition({
+        top,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    document.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      document.removeEventListener("scroll", place, true);
+    };
+  }, [confirmingId, menuId]);
 
   const focusAt = (index: number) => {
     const next = rows[Math.max(0, Math.min(rows.length - 1, index))];
@@ -156,6 +199,15 @@ export function DraftSidebarView({
         setError(cause instanceof Error ? cause.message : String(cause));
       })
       .finally(() => setBusyId(undefined));
+  };
+  const createDraft = () => {
+    setCreating(true);
+    setError(undefined);
+    void onCreate()
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      })
+      .finally(() => setCreating(false));
   };
   const keyDown = (
     event: KeyboardEvent<HTMLDivElement>,
@@ -229,7 +281,90 @@ export function DraftSidebarView({
     });
   };
 
-  if (rows.length === 0) return null;
+  const menuDraft = rows.find((draft) => draft.id === menuId);
+  const menu =
+    menuDraft === undefined
+      ? null
+      : createElement(
+          "div",
+          {
+            ref: menuRef,
+            className: "dsd-menu",
+            role: "menu",
+            style:
+              menuPosition === undefined
+                ? { visibility: "hidden", top: 0, right: 0 }
+                : menuPosition,
+          },
+          confirmingId === menuDraft.id
+            ? createElement(
+                Fragment,
+                null,
+                createElement(
+                  "div",
+                  { className: "dsd-confirm" },
+                  "Delete this unsent draft?",
+                ),
+                createElement(
+                  "div",
+                  { className: "dsd-confirm-actions" },
+                  createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "dsd-menu-item",
+                      onClick: () => setConfirmingId(undefined),
+                    },
+                    "Cancel",
+                  ),
+                  createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "dsd-menu-item",
+                      "data-danger": true,
+                      onClick: () => run(menuDraft, () => onDelete(menuDraft)),
+                    },
+                    "Delete",
+                  ),
+                ),
+              )
+            : createElement(
+                Fragment,
+                null,
+                createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "dsd-menu-item",
+                    role: "menuitem",
+                    onClick: () => beginRename(menuDraft),
+                  },
+                  "Rename",
+                ),
+                createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "dsd-menu-item",
+                    role: "menuitem",
+                    onClick: () => run(menuDraft, () => onDuplicate(menuDraft)),
+                  },
+                  "Duplicate",
+                ),
+                createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "dsd-menu-item",
+                    role: "menuitem",
+                    "data-danger": true,
+                    onClick: () => setConfirmingId(menuDraft.id),
+                  },
+                  "Delete…",
+                ),
+              ),
+        );
   return createElement(
     Fragment,
     null,
@@ -237,7 +372,22 @@ export function DraftSidebarView({
     createElement(
       "section",
       { className: "dsd-panel", "aria-label": "Draft sessions" },
-      createElement("div", { className: "dsd-heading" }, "Drafts"),
+      createElement(
+        "div",
+        { className: "dsd-heading" },
+        createElement("span", { className: "dsd-heading-label" }, "Drafts"),
+        createElement(
+          "button",
+          {
+            type: "button",
+            className: "dsd-add",
+            "aria-label": "New draft",
+            disabled: creating,
+            onClick: createDraft,
+          },
+          "+",
+        ),
+      ),
       createElement(
         "div",
         { role: "tree", "aria-label": "Draft sessions" },
@@ -358,6 +508,10 @@ export function DraftSidebarView({
               createElement(
                 "button",
                 {
+                  ref: (node: HTMLButtonElement | null) => {
+                    if (node === null) actionRefs.current.delete(draft.id);
+                    else actionRefs.current.set(draft.id, node);
+                  },
                   type: "button",
                   className: "dsd-menu-button",
                   "aria-label": `Actions for ${rowTitle(draft)}`,
@@ -371,83 +525,6 @@ export function DraftSidebarView({
                 },
                 "⋯",
               ),
-              menuOpen &&
-                createElement(
-                  "div",
-                  {
-                    className: "dsd-menu",
-                    role: "menu",
-                    onClick: (event: MouseEvent) => event.stopPropagation(),
-                  },
-                  confirmingId === draft.id
-                    ? createElement(
-                        Fragment,
-                        null,
-                        createElement(
-                          "div",
-                          { className: "dsd-confirm" },
-                          "Delete this unsent draft?",
-                        ),
-                        createElement(
-                          "div",
-                          { className: "dsd-confirm-actions" },
-                          createElement(
-                            "button",
-                            {
-                              type: "button",
-                              className: "dsd-menu-item",
-                              onClick: () => setConfirmingId(undefined),
-                            },
-                            "Cancel",
-                          ),
-                          createElement(
-                            "button",
-                            {
-                              type: "button",
-                              className: "dsd-menu-item",
-                              "data-danger": true,
-                              onClick: () => run(draft, () => onDelete(draft)),
-                            },
-                            "Delete",
-                          ),
-                        ),
-                      )
-                    : createElement(
-                        Fragment,
-                        null,
-                        createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "dsd-menu-item",
-                            role: "menuitem",
-                            onClick: () => beginRename(draft),
-                          },
-                          "Rename",
-                        ),
-                        createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "dsd-menu-item",
-                            role: "menuitem",
-                            onClick: () => run(draft, () => onDuplicate(draft)),
-                          },
-                          "Duplicate",
-                        ),
-                        createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "dsd-menu-item",
-                            role: "menuitem",
-                            "data-danger": true,
-                            onClick: () => setConfirmingId(draft.id),
-                          },
-                          "Delete…",
-                        ),
-                      ),
-                ),
             ),
           );
         }),
@@ -459,6 +536,7 @@ export function DraftSidebarView({
             { className: "dsd-error", role: "alert" },
             error,
           ),
+      menu === null ? null : createPortal(menu, document.body),
     ),
   );
 }

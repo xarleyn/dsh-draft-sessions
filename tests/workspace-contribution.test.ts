@@ -130,6 +130,18 @@ describe("workspace draft contribution", () => {
     expect(remove).toHaveBeenCalledWith("draft-a");
   });
 
+  it("routes the visible new-draft action through flush-create-open semantics", async () => {
+    const create = vi.fn(async () => draft);
+    const ctx = {
+      draftShortcutController: { create },
+    };
+    const element = renderContribution(ctx, { accept: vi.fn() });
+
+    await (element.props.onCreate as () => Promise<void>)();
+
+    expect(create).toHaveBeenCalledOnce();
+  });
+
   it("restores the active composer when draft deletion is rejected", async () => {
     const open = vi.fn(async () => draft);
     const clear = vi.fn();

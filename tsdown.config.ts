@@ -9,6 +9,7 @@ const CLIENT_EXTERNALS = [
   "@deepseek-ai/dsh-client-ui-conversation/client",
   "@deepseek-ai/dsh-typert-protocol",
   "react",
+  "react-dom",
 ];
 
 const configs = [

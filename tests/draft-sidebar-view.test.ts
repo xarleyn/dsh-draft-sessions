@@ -45,6 +45,7 @@ function props(
     drafts: [draft("a", 0), draft("b", 1)],
     currentSessionId: "shell-a",
     workspaceNames: { "workspace-a": "dsh" },
+    onCreate: vi.fn(async () => undefined),
     onOpen: vi.fn(),
     onRename: vi.fn(async () => undefined),
     onDuplicate: vi.fn(async () => undefined),
@@ -55,6 +56,15 @@ function props(
 }
 
 describe("draft sidebar view", () => {
+  it("creates a distinct draft from the section action", async () => {
+    const options = props();
+    render(createElement(DraftSidebarView, options));
+
+    fireEvent.click(screen.getByRole("button", { name: "New draft" }));
+
+    await waitFor(() => expect(options.onCreate).toHaveBeenCalledOnce());
+  });
+
   it("renders muted draft semantics and selection", () => {
     render(createElement(DraftSidebarView, props()));
 
@@ -127,6 +137,18 @@ describe("draft sidebar view", () => {
         expect.objectContaining({ id: "a" }),
       ),
     );
+  });
+
+  it("portals the row menu outside the scrolling draft panel", () => {
+    render(createElement(DraftSidebarView, props()));
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions for Task a" }));
+
+    const menu = screen.getByRole("menu");
+    expect(menu.parentElement).toBe(document.body);
+    expect(
+      screen.getByRole("region", { name: "Draft sessions" }).contains(menu),
+    ).toBe(false);
   });
 
   it("reorders compatible rows with native drag and drop", async () => {

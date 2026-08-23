@@ -48,15 +48,17 @@ Ordinary edits use a 350 ms debounce and serialized optimistic `draftSessions.up
 
 `DraftShortcutController` owns the global `Ctrl/Cmd + Shift + N` action. It resolves the current Session's Workspace, falling back to the runtime's recent Workspace, flushes the active composer, and then creates and opens a distinct lifecycle draft. One creation may be in flight at a time.
 
-### Composable workspace sidebar
+### Cooperative sidebar surfaces
 
-The Harness sidebar owns an additive root-scoped `sidebar.workspaces.before` list slot immediately before its single `sidebar.workspaces` occupant. `dsh-draft-sessions` registers `DraftSidebarView` into that list through declaration-aware `slots.inject()`. The stock browser, Archive Manager replacement, or another deployment browser remains the sole occupant and retains search, dialogs, ordering, ordinary rows, and child declarations.
+`sidebar.workspaces` is a single slot. The stock browser, Archive Manager, or another deployment browser must remain its only owner, so `dsh-draft-sessions` never registers there and never disables or wraps that occupant.
 
-Each DraftRecord still owns a blank execution Session. The plugin contributes their ids to `slots.excludeSessionRows("sidebar.workspaces", source)`. Harness unions all contributors and projects `useSessions` plus `useWorkspaces` only for that slot, removing duplicate shell rows and their Workspace membership without changing the object layers or current Session provider. The additive draft component reads the unprojected standard hooks, so it can highlight and operate on the current draft while the composer remains session-bound.
+Some ecosystem sidebar hosts expose the versioned `__dshNativeTabs@1` cooperation registry on the active entry or component. The protocol intentionally uses structural feature detection: plugins copy its small interface instead of importing one another. When present, `dsh-draft-sessions` inserts a `Drafts` tab at order 20, between the built-in Tasks view and Automation's Scheduled tab at order 30. `matchSession` follows a draft shell into that tab, and the optional `addSessionFilter` keep-predicate removes draft shell ids from hosts that implement task filtering.
 
-Both integrations wait for their owner declarations independently, so Loader and client activation order do not affect the result. The plugin does not inspect `sidebar.workspaces` entries, change priority, disable `ui-workspace`, copy an occupant's store or child declarations, or embed another client bundle. Harness builds without the additive slot and exclusion API fail at activation with an explicit compatibility error.
+The registry can appear before or after this plugin because another client plugin may wrap the workspace occupant during its own activation. A slot subscription handles registration changes and a low-cost reconciler detects the protocol property being attached to an existing entry. Switching registries disposes the old tab and filter before inserting into the new host, so behavior does not depend on Loader order or HMR timing.
 
-The draft view places pinned and manually ordered DraftRecords before the browser, retains shell-less or errored drafts as actionable rows, and normalizes reorder updates to stable zero-based positions with optimistic revisions.
+The published Harness rc.2 client has no native tabs. In that case the plugin registers a trigger into the public root-scoped `sidebar.footer.action` list slot and opens the same `DraftSidebarView` in a fixed popover. The footer entry stays mounted but renders nothing while a cooperative tab host is active. This fallback is additive and does not know which workspace browser owns the single slot.
+
+The draft view retains shell-less or errored drafts as actionable rows and normalizes reorder updates to stable zero-based positions with optimistic revisions. Row menus are portaled above both tab and popover surfaces, so opening a menu neither clips it nor changes the sidebar scroll geometry.
 
 ## Recovery rules
 

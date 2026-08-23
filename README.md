@@ -11,12 +11,12 @@ Persistent, unsent future conversations for [DeepSeek Harness](https://github.co
 
 ## See it in action
 
-![Three independent draft sessions beside the standard DeepSeek Harness workspace browser](docs/images/draft-sessions-hero.png)
+![Three independent draft sessions in a cooperative DeepSeek Harness sidebar tab](docs/images/draft-sessions-hero.png)
 
-<p align="center"><em>Keep several unsent tasks ready, switch between them, and continue using ordinary workspaces and sessions.</em></p>
+<p align="center"><em>Keep several unsent tasks ready in Drafts while Tasks and Scheduled keep their own sidebar views.</em></p>
 
 <p align="center">
-  <img src="docs/images/draft-sessions-actions.png" width="300" alt="Draft session actions rendered above the sidebar" />
+  <img src="docs/images/draft-sessions-actions.png" width="360" alt="Draft session actions rendered above the sidebar without clipping or extra scrolling" />
 </p>
 
 <p align="center"><em>Create a distinct draft with <code>+</code>, then rename, duplicate, or delete it from the row menu.</em></p>
@@ -55,10 +55,12 @@ flowchart LR
 - Exact composer restore through the official per-session InputHub facade.
 - Debounced optimistic autosave with a mandatory pre-switch flush.
 - Draft creation from the Drafts `+` action or `Ctrl/Cmd + Shift + N`; both flush the active draft before opening a distinct one.
-- Muted draft rows before ordinary Sessions through the additive `sidebar.workspaces.before` slot.
+- A cooperative `Drafts` tab when the active sidebar host exposes `__dshNativeTabs@1`.
+- A stock `sidebar.footer.action` trigger and popover when the tab protocol is absent.
 - Portaled row menus, inline rename, duplicate, confirmed delete, keyboard navigation, and bounded drag reorder.
 - Safe active-draft deletion with a final autosave flush and recovery after a rejected delete.
-- Slot-local shell exclusion that leaves the active stock or Archive Manager browser untouched.
+- Optional native-tab session filtering that hides draft shells without changing ordinary Sessions.
+- No registration in the single-slot `sidebar.workspaces`; stock UI, Archive Manager, and other browser owners keep full control.
 - Unit and DOM coverage for persistence, concurrency, lifecycle, composer, and sidebar behavior.
 
 The current implementation deliberately does not send prompts, modify ordinary Session history, or delete blank Sessions.
@@ -67,9 +69,9 @@ The current implementation deliberately does not send prompts, modify ordinary S
 
 - Node.js `^22.19.0` or `>=24.0.0`
 - pnpm 11
-- A DeepSeek Harness build containing `sidebar.workspaces.before` and `slots.excludeSessionRows`
+- DeepSeek Harness `>=0.1.1-rc.2 <0.2.0` with the public `sidebar.footer.action` list slot
 
-The Host API remains compatible with the `next` range `>=0.1.1-rc.2 <0.2.0`, but the published rc.2 client does not contain the two composition features yet. `compatibility.json` records this feature contract; activation fails loudly on an older client instead of silently hiding draft rows.
+The published rc.2 client is supported without patches. Sidebar tab hosts are detected through the optional versioned `__dshNativeTabs@1` cooperation protocol; the plugin falls back to the stock footer action instead of replacing the workspace browser.
 
 ## Development
 

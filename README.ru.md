@@ -23,10 +23,12 @@
 - Точное восстановление текста через официальный per-session InputHub.
 - Debounced optimistic autosave с обязательным flush перед переключением.
 - Создание через `+` в секции Drafts или `Ctrl/Cmd + Shift + N`; оба действия сначала сохраняют активный draft, затем открывают отдельный новый.
-- Muted draft-строки перед обычными Sessions через аддитивный slot `sidebar.workspaces.before`.
+- Отдельная вкладка `Drafts`, когда активный sidebar host предоставляет протокол `__dshNativeTabs@1`.
+- Штатная кнопка и popover через `sidebar.footer.action`, когда протокола вкладок нет.
 - Вынесенные поверх панелей row-меню, inline rename, duplicate, подтверждаемое удаление, клавиатурная навигация и ограниченный drag reorder.
 - Безопасное удаление активного draft с финальным autosave flush и восстановлением после отказа.
-- Slot-local исключение backing shell, не изменяющее активный штатный browser или Archive Manager.
+- Опциональная фильтрация backing shell через протокол вкладок без изменения обычных Sessions.
+- Плагин не регистрируется в single-slot `sidebar.workspaces`; штатный browser, Archive Manager и другие владельцы сохраняют полный контроль.
 - Unit- и DOM-тесты persistence, concurrency, lifecycle, composer и sidebar.
 
 Текущий код не отправляет prompt, не изменяет историю обычных Sessions и не удаляет blank Sessions.
@@ -35,9 +37,9 @@
 
 - Node.js `^22.19.0` или `>=24.0.0`
 - pnpm 11
-- Сборка DeepSeek Harness с `sidebar.workspaces.before` и `slots.excludeSessionRows`
+- DeepSeek Harness `>=0.1.1-rc.2 <0.2.0` с публичным list-slot `sidebar.footer.action`
 
-Host API остаётся совместимым с диапазоном `next` `>=0.1.1-rc.2 <0.2.0`, но опубликованный клиент rc.2 ещё не содержит две функции композиции. Контракт функций записан в `compatibility.json`; на старом клиенте активация завершается явной ошибкой вместо незаметного исчезновения draft-строк.
+Опубликованный клиент rc.2 поддерживается без патчей. Sidebar host с вкладками определяется через опциональный версионированный протокол `__dshNativeTabs@1`; если его нет, плагин использует штатный footer action и не заменяет workspace browser.
 
 ## Локальная разработка
 

@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
-import { ZodError } from "zod";
 import {
   DEFAULT_MAX_DRAFTS_PER_WORKSPACE,
   DRAFT_FILE_VERSION,
@@ -18,7 +17,7 @@ import type {
   UpdateDraftRequest,
 } from "../shared/types.js";
 import { DraftStoreError } from "./errors.js";
-import { draftFileSchema } from "./schema.js";
+import { draftFileSchema } from "../shared/schema.js";
 
 export interface DraftStoreOptions {
   readonly storagePath?: string;
@@ -300,12 +299,7 @@ export class DraftStore {
       return this.drafts;
     } catch (error) {
       if (error instanceof DraftStoreError) throw error;
-      const detail =
-        error instanceof ZodError
-          ? error.issues.map((issue) => issue.message).join("; ")
-          : error instanceof Error
-            ? error.message
-            : String(error);
+      const detail = error instanceof Error ? error.message : String(error);
       throw new DraftStoreError(
         `invalid draft storage: ${detail}`,
         "DRAFT_STORAGE_INVALID",

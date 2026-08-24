@@ -74,6 +74,7 @@ describe("draft sidebar surfaces", () => {
     const disposers: Array<() => void> = [];
     const ctx = {
       locale: createTestLocale(),
+      logger: vi.fn(() => ({ error: vi.fn() })),
       slots: {
         entriesOfSlot: () => [],
         subscribe: vi.fn(() => () => undefined),
@@ -120,6 +121,7 @@ describe("draft sidebar surfaces", () => {
     const disposers: Array<() => void> = [];
     const ctx = {
       locale: createTestLocale(),
+      logger: vi.fn(() => ({ error: vi.fn() })),
       slots: {
         entriesOfSlot: () => [{ component }],
         subscribe: vi.fn(() => () => undefined),

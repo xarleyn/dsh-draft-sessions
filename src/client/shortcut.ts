@@ -8,6 +8,7 @@ import type {
 import type { DraftSession } from "../shared/types.js";
 import type { DraftComposerBridge } from "./composer.js";
 import type { DraftSessionLifecycle } from "./lifecycle.js";
+import { DraftReporter } from "./reporter.js";
 
 interface ShortcutEvent {
   readonly key: string;
@@ -29,6 +30,7 @@ export interface DraftShortcutControllerOptions {
   readonly sessions: Pick<ISessions, "list">;
   readonly workspaces: Pick<IWorkspaces, "list">;
   readonly shortcuts?: ShortcutSource;
+  readonly reporter?: DraftReporter;
 }
 
 function browserShortcuts(): ShortcutSource | undefined {
@@ -65,6 +67,7 @@ export class DraftShortcutController extends Service {
   private readonly composer: Pick<DraftComposerBridge, "flush" | "open">;
   private readonly sessions: Pick<ISessions, "list">;
   private readonly workspaces: Pick<IWorkspaces, "list">;
+  private readonly reporter: DraftReporter;
   private creating = false;
 
   constructor(ctx: Context, options?: DraftShortcutControllerOptions) {
@@ -73,6 +76,7 @@ export class DraftShortcutController extends Service {
     this.composer = options?.composer ?? ctx.draftComposerBridge;
     this.sessions = options?.sessions ?? ctx.sessions;
     this.workspaces = options?.workspaces ?? ctx.workspaces;
+    this.reporter = options?.reporter ?? new DraftReporter(ctx);
     const shortcuts = options?.shortcuts ?? browserShortcuts();
     if (shortcuts !== undefined) {
       ctx.effect(
@@ -117,7 +121,7 @@ export class DraftShortcutController extends Service {
     this.creating = true;
     void this.create()
       .catch((error: unknown) => {
-        console.error("draft session shortcut failed", error);
+        this.reporter.error("shortcut-create", error);
       })
       .finally(() => {
         this.creating = false;

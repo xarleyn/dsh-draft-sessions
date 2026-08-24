@@ -64,6 +64,7 @@ describe("client activation", () => {
       sessions: {},
       workspaces: {},
       conversation: {},
+      logger: vi.fn(() => ({ error: vi.fn() })),
       locale: { register: registerLocale },
       effect: vi.fn((factory: () => () => void) => factory()),
     };
@@ -90,12 +91,18 @@ describe("client activation", () => {
     await expect(apply({ remote, inject } as never)).resolves.toBe(dispose);
     expect(mount).toHaveBeenCalledOnce();
     expect(inject).toHaveBeenCalledOnce();
-    expect(observed.sidebar).toHaveBeenCalledWith(readyCtx, drafts);
+    expect(observed.sidebar).toHaveBeenCalledWith(
+      readyCtx,
+      drafts,
+      expect.any(Object),
+    );
+    const reporter = observed.sidebar.mock.calls[0]![2];
     expect(observed.lifecycle).toHaveBeenCalledWith(readyCtx, {
       drafts,
       sessions: sessionsApi,
       envelopes: { sessions: sessionsApi, subscribeEnvelopes },
       sidebar: expect.anything(),
+      reporter,
     });
     expect(observed.composer).toHaveBeenCalledWith(readyCtx, {
       lifecycle: expect.anything(),
@@ -109,10 +116,12 @@ describe("client activation", () => {
       composer: expect.anything(),
       sessions: readyCtx.sessions,
       workspaces: readyCtx.workspaces,
+      reporter,
     });
     expect(observed.contribution).toHaveBeenCalledWith(
       readyCtx,
       expect.anything(),
+      reporter,
     );
     expect(registerLocale).toHaveBeenNthCalledWith(
       1,

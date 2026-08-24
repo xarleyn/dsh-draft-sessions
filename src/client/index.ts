@@ -13,6 +13,7 @@ import draftSessionsRemote from "../remote.js";
 import { DraftComposerBridge } from "./composer.js";
 import { DraftSessionLifecycle, envelopeSource } from "./lifecycle.js";
 import { registerDraftLocale } from "./locale.js";
+import { DraftReporter } from "./reporter.js";
 import { DraftSidebarSource } from "./sidebar.js";
 import { DraftShortcutController } from "./shortcut.js";
 import { activateWorkspaceContribution } from "./workspace-contribution.js";
@@ -56,13 +57,15 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       "draft sessions: locale dictionaries",
     );
     const drafts = remoteCtx.remote.draftSessions;
+    const reporter = new DraftReporter(remoteCtx);
     const envelopes = envelopeSource(remoteCtx.connection.api);
-    const sidebar = new DraftSidebarSource(remoteCtx, drafts);
+    const sidebar = new DraftSidebarSource(remoteCtx, drafts, reporter);
     const lifecycle = new DraftSessionLifecycle(remoteCtx, {
       drafts,
       sessions: remoteCtx.connection.api.sessions,
       ...(envelopes === undefined ? {} : { envelopes }),
       sidebar,
+      reporter,
     });
     const composer = new DraftComposerBridge(remoteCtx, {
       lifecycle,
@@ -76,8 +79,9 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       composer,
       sessions: remoteCtx.sessions,
       workspaces: remoteCtx.workspaces,
+      reporter,
     });
-    activateWorkspaceContribution(remoteCtx, sidebar);
+    activateWorkspaceContribution(remoteCtx, sidebar, reporter);
   });
   return dispose;
 }

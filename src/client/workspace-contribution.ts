@@ -18,6 +18,7 @@ import type { DraftSession } from "../shared/types.js";
 import { DraftSidebarView } from "./draft-sidebar-view.js";
 import { DRAFT_LOCALE_NAMESPACE, useDraftTranslate } from "./locale.js";
 import { planDraftReorder, type DraftSidebarSource } from "./sidebar.js";
+import { DraftReporter } from "./reporter.js";
 
 type SelectorHook<State> = <Selected>(
   selector: (state: State) => Selected,
@@ -153,6 +154,7 @@ function draftSelector(
 export function createDraftWorkspaceContribution(
   ctx: Context,
   source: DraftSidebarSource,
+  reporter = new DraftReporter(ctx),
 ): FC<DraftContributionProps> {
   return function DraftWorkspaceContribution({
     wide,
@@ -247,7 +249,7 @@ export function createDraftWorkspaceContribution(
       },
       onOpen: (draft) => {
         void ctx.draftComposerBridge.open(draft).catch((error: unknown) => {
-          console.error("draft open failed", error);
+          reporter.error("draft-open", error);
         });
       },
       onRename: rename,
@@ -262,8 +264,9 @@ function createDraftFooterAction(
   ctx: Context,
   source: DraftSidebarSource,
   mode: IntegrationModeSource,
+  reporter: DraftReporter,
 ): FC<DraftFooterProps> {
-  const DraftPanel = createDraftWorkspaceContribution(ctx, source);
+  const DraftPanel = createDraftWorkspaceContribution(ctx, source, reporter);
   const useDrafts = draftSelector(source);
   return function DraftFooterAction({ wide, useSessions, useWorkspaces }) {
     const t = useDraftTranslate(ctx);
@@ -400,11 +403,12 @@ function workspaceEntries(slots: ComposableSlots): readonly unknown[] {
 export function activateWorkspaceContribution(
   ctx: Context,
   source: DraftSidebarSource,
+  reporter = new DraftReporter(ctx),
 ): "activated" {
   const slots = ctx.slots as unknown as ComposableSlots;
   const mode = new IntegrationModeSource();
   const useDrafts = draftSelector(source);
-  const DraftPanel = createDraftWorkspaceContribution(ctx, source);
+  const DraftPanel = createDraftWorkspaceContribution(ctx, source, reporter);
   const t = ctx.locale.bind(DRAFT_LOCALE_NAMESPACE);
 
   slots.inject("sidebar.footer.action", () =>
@@ -414,7 +418,7 @@ export function activateWorkspaceContribution(
         id: "dsh-draft-sessions",
         order: 40,
       },
-      createDraftFooterAction(ctx, source, mode),
+      createDraftFooterAction(ctx, source, mode, reporter),
     ),
   );
   slots.inject("sidebar.workspaces", () => {

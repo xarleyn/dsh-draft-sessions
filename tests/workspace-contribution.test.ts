@@ -27,6 +27,7 @@ const draft = {
 function renderContribution(ctx: unknown, source: unknown) {
   const localized = {
     locale: createTestLocale(),
+    logger: vi.fn(() => ({ error: vi.fn() })),
     ...(ctx as Record<string, unknown>),
   };
   const component = createDraftWorkspaceContribution(
@@ -82,6 +83,7 @@ describe("workspace draft contribution", () => {
     const locale = createTestLocale();
     const ctx = {
       locale,
+      logger: vi.fn(() => ({ error: vi.fn() })),
       slots: {
         entriesOfSlot: (_name?: string) => [occupant],
         inject: (_name: string, callback: () => () => void) => callback(),
@@ -131,6 +133,7 @@ describe("workspace draft contribution", () => {
     const register = vi.fn(() => () => undefined);
     const ctx = {
       locale: createTestLocale(),
+      logger: vi.fn(() => ({ error: vi.fn() })),
       slots: {
         entriesOfSlot: () => [],
         inject: (_name: string, callback: () => () => void) => callback(),
@@ -164,6 +167,7 @@ describe("workspace draft contribution", () => {
     const occupant = { component: () => null };
     const ctx = {
       locale: createTestLocale(),
+      logger: vi.fn(() => ({ error: vi.fn() })),
       slots: {
         entriesOfSlot: () => [occupant],
         inject: (_name: string, callback: () => () => void) => callback(),

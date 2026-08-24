@@ -1,10 +1,12 @@
 import { createElement, Fragment, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { DraftSession } from "../../shared/types.js";
+import type { DraftTranslate } from "../locale.js";
 import type { DraftMenuPosition } from "./types.js";
 
 interface DraftSidebarMenuProps {
   readonly draft: DraftSession;
+  readonly t: DraftTranslate;
   readonly confirming: boolean;
   readonly menuRef: RefObject<HTMLDivElement>;
   readonly position: DraftMenuPosition | undefined;
@@ -17,6 +19,7 @@ interface DraftSidebarMenuProps {
 
 export function DraftSidebarMenu({
   confirming,
+  t,
   menuRef,
   position,
   onCancelConfirm,
@@ -43,7 +46,7 @@ export function DraftSidebarMenu({
           createElement(
             "div",
             { className: "dsd-confirm" },
-            "Delete this unsent draft?",
+            t("delete.confirm"),
           ),
           createElement(
             "div",
@@ -55,7 +58,7 @@ export function DraftSidebarMenu({
                 className: "dsd-menu-item",
                 onClick: onCancelConfirm,
               },
-              "Cancel",
+              t("action.cancel"),
             ),
             createElement(
               "button",
@@ -65,7 +68,7 @@ export function DraftSidebarMenu({
                 "data-danger": true,
                 onClick: onConfirmDelete,
               },
-              "Delete",
+              t("action.delete"),
             ),
           ),
         )
@@ -80,7 +83,7 @@ export function DraftSidebarMenu({
               role: "menuitem",
               onClick: onRename,
             },
-            "Rename",
+            t("action.rename"),
           ),
           createElement(
             "button",
@@ -90,7 +93,7 @@ export function DraftSidebarMenu({
               role: "menuitem",
               onClick: onDuplicate,
             },
-            "Duplicate",
+            t("action.duplicate"),
           ),
           createElement(
             "button",
@@ -101,7 +104,7 @@ export function DraftSidebarMenu({
               "data-danger": true,
               onClick: onRequestDelete,
             },
-            "Delete…",
+            t("action.delete.ellipsis"),
           ),
         ),
   );

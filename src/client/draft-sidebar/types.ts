@@ -1,4 +1,5 @@
 import type { DraftSession } from "../../shared/types.js";
+import type { DraftTranslate } from "../locale.js";
 
 export interface DraftDropTarget {
   readonly workspaceId: string;
@@ -6,6 +7,7 @@ export interface DraftDropTarget {
 }
 
 export interface DraftSidebarViewProps {
+  readonly t: DraftTranslate;
   readonly surface?: "inline" | "tab" | "popover";
   readonly drafts: readonly DraftSession[];
   readonly currentSessionId?: string;

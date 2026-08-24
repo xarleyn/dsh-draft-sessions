@@ -9,6 +9,7 @@ import type {
   SessionListState,
   WorkspaceListState,
 } from "@deepseek-ai/dsh-client-runtime/client";
+import { createTestLocale } from "./locale-fixture.js";
 
 const draft = {
   version: 1,
@@ -24,8 +25,12 @@ const draft = {
 } satisfies DraftSession;
 
 function renderContribution(ctx: unknown, source: unknown) {
+  const localized = {
+    locale: createTestLocale(),
+    ...(ctx as Record<string, unknown>),
+  };
   const component = createDraftWorkspaceContribution(
-    ctx as never,
+    localized as never,
     source as never,
   );
   return component({
@@ -74,7 +79,9 @@ describe("workspace draft contribution", () => {
     Object.assign(component, { [NATIVE_TABS_KEY]: registry });
     const occupant = { component };
     const register = vi.fn(() => () => undefined);
+    const locale = createTestLocale();
     const ctx = {
+      locale,
       slots: {
         entriesOfSlot: (_name?: string) => [occupant],
         inject: (_name: string, callback: () => () => void) => callback(),
@@ -112,11 +119,18 @@ describe("workspace draft contribution", () => {
       expect.any(Function),
     );
     expect(ctx.slots.entriesOfSlot("sidebar.workspaces")).toEqual([occupant]);
+
+    locale.setLocale("ru");
+    expect(removeTab).toHaveBeenCalledOnce();
+    expect(insert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ label: "Черновики" }),
+    );
   });
 
   it("falls back to the public footer action when no tab host exists", () => {
     const register = vi.fn(() => () => undefined);
     const ctx = {
+      locale: createTestLocale(),
       slots: {
         entriesOfSlot: () => [],
         inject: (_name: string, callback: () => () => void) => callback(),
@@ -149,6 +163,7 @@ describe("workspace draft contribution", () => {
     const insert = vi.fn(() => () => undefined);
     const occupant = { component: () => null };
     const ctx = {
+      locale: createTestLocale(),
       slots: {
         entriesOfSlot: () => [occupant],
         inject: (_name: string, callback: () => () => void) => callback(),

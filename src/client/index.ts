@@ -12,6 +12,7 @@ import type {} from "@deepseek-ai/dsh-api-gateway/client";
 import draftSessionsRemote from "../remote.js";
 import { DraftComposerBridge } from "./composer.js";
 import { DraftSessionLifecycle, envelopeSource } from "./lifecycle.js";
+import { registerDraftLocale } from "./locale.js";
 import { DraftSidebarSource } from "./sidebar.js";
 import { DraftShortcutController } from "./shortcut.js";
 import { activateWorkspaceContribution } from "./workspace-contribution.js";
@@ -50,6 +51,10 @@ export const inject = [
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const dispose = await ctx.remote.$mount(draftSessionsRemote);
   await ctx.inject(["remote.draftSessions"], (remoteCtx) => {
+    remoteCtx.effect(
+      () => registerDraftLocale(remoteCtx),
+      "draft sessions: locale dictionaries",
+    );
     const drafts = remoteCtx.remote.draftSessions;
     const envelopes = envelopeSource(remoteCtx.connection.api);
     const sidebar = new DraftSidebarSource(remoteCtx, drafts);

@@ -5,10 +5,12 @@ import {
   type Ref,
 } from "react";
 import type { DraftSession } from "../../shared/types.js";
+import type { DraftTranslate } from "../locale.js";
 import type { DraftDropMarker } from "./types.js";
 
 interface DraftSidebarRowProps {
   readonly draft: DraftSession;
+  readonly t: DraftTranslate;
   readonly title: string;
   readonly workspaceName: string;
   readonly selected: boolean;
@@ -36,6 +38,7 @@ interface DraftSidebarRowProps {
 
 export function DraftSidebarRow({
   draft,
+  t,
   title,
   workspaceName,
   selected,
@@ -68,7 +71,7 @@ export function DraftSidebarRow({
       role: "treeitem",
       tabIndex: active ? 0 : -1,
       "aria-selected": selected,
-      "aria-label": `${title}, Draft`,
+      "aria-label": t("draft.row", { title }),
       "data-selected": selected,
       "data-state": draft.state,
       "data-menu": menuOpen,
@@ -94,7 +97,7 @@ export function DraftSidebarRow({
           className: "dsd-rename",
           value: renameText,
           autoFocus: true,
-          "aria-label": "Draft title",
+          "aria-label": t("draft.title.input"),
           disabled,
           onClick: (event: MouseEvent) => event.stopPropagation(),
           onChange: (event: { currentTarget: HTMLInputElement }) =>
@@ -114,7 +117,9 @@ export function DraftSidebarRow({
     createElement(
       "span",
       { className: "dsd-badge" },
-      draft.state === "error" ? "Error" : "Draft",
+      draft.state === "error"
+        ? t("draft.status.error")
+        : t("draft.status.default"),
     ),
     createElement(
       "span",
@@ -125,7 +130,7 @@ export function DraftSidebarRow({
           ref: actionRef,
           type: "button",
           className: "dsd-menu-button",
-          "aria-label": `Actions for ${title}`,
+          "aria-label": t("action.actions", { title }),
           "aria-expanded": menuOpen,
           disabled,
           onClick: onToggleMenu,

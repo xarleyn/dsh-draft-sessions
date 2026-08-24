@@ -54,11 +54,12 @@ export function resolveDraftDropTarget(
   };
 }
 
-function rowTitle(draft: DraftSession): string {
-  return displayDraftTitle(draft) || "Untitled draft";
+function rowTitle(draft: DraftSession, t: DraftSidebarViewProps["t"]): string {
+  return displayDraftTitle(draft) || t("draft.untitled");
 }
 
 export function DraftSidebarView({
+  t,
   surface = "inline",
   drafts,
   currentSessionId,
@@ -90,7 +91,7 @@ export function DraftSidebarView({
     setMenuId(undefined);
     setConfirmingId(undefined);
     setEditingId(draft.id);
-    setRenameText(rowTitle(draft));
+    setRenameText(rowTitle(draft, t));
     setError(undefined);
   };
   const run = (draft: DraftSession, action: () => Promise<void>) => {
@@ -198,18 +199,22 @@ export function DraftSidebarView({
       {
         className: "dsd-panel",
         "data-surface": surface,
-        "aria-label": "Draft sessions",
+        "aria-label": t("section.aria"),
       },
       createElement(
         "div",
         { className: "dsd-heading" },
-        createElement("span", { className: "dsd-heading-label" }, "Drafts"),
+        createElement(
+          "span",
+          { className: "dsd-heading-label" },
+          t("section.label"),
+        ),
         createElement(
           "button",
           {
             type: "button",
             className: "dsd-add",
-            "aria-label": "New draft",
+            "aria-label": t("action.new"),
             disabled: creating,
             onClick: createDraft,
           },
@@ -218,16 +223,17 @@ export function DraftSidebarView({
       ),
       createElement(
         "div",
-        { role: "tree", "aria-label": "Draft sessions" },
+        { role: "tree", "aria-label": t("section.aria") },
         ...rows.map((draft) => {
           const selected = draft.sessionId === currentSessionId;
           const editing = editingId === draft.id;
           const menuOpen = menuId === draft.id;
           const disabled = busyId === draft.id;
-          const title = rowTitle(draft);
+          const title = rowTitle(draft, t);
           return createElement(DraftSidebarRow, {
             key: draft.id,
             draft,
+            t,
             title,
             workspaceName: workspaceNames[draft.workspaceId] ?? "",
             selected,
@@ -313,6 +319,7 @@ export function DraftSidebarView({
         ? null
         : createElement(DraftSidebarMenu, {
             draft: menuDraft,
+            t,
             confirming: confirmingId === menuDraft.id,
             menuRef,
             position: menuPosition,

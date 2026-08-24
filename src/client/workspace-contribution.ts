@@ -16,6 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import type { DraftSession } from "../shared/types.js";
 import { DraftSidebarView } from "./draft-sidebar-view.js";
+import { DRAFT_LOCALE_NAMESPACE, useDraftTranslate } from "./locale.js";
 import { planDraftReorder, type DraftSidebarSource } from "./sidebar.js";
 
 type SelectorHook<State> = <Selected>(
@@ -160,6 +161,7 @@ export function createDraftWorkspaceContribution(
     useSessions,
     useWorkspaces,
   }) {
+    const t = ctx.locale.bind(DRAFT_LOCALE_NAMESPACE);
     const drafts = useDrafts((value) => value);
     const currentSessionId = useSessions((state) => state.current);
     const workspaceNames = Object.fromEntries(
@@ -235,6 +237,7 @@ export function createDraftWorkspaceContribution(
     };
 
     return createElement(DraftSidebarView, {
+      t,
       surface,
       drafts,
       currentSessionId,
@@ -263,6 +266,7 @@ function createDraftFooterAction(
   const DraftPanel = createDraftWorkspaceContribution(ctx, source);
   const useDrafts = draftSelector(source);
   return function DraftFooterAction({ wide, useSessions, useWorkspaces }) {
+    const t = useDraftTranslate(ctx);
     const integration = useSyncExternalStore(
       mode.subscribe,
       mode.getSnapshot,
@@ -321,7 +325,7 @@ function createDraftFooterAction(
                 ref: panelRef,
                 className: "dsd-footer-panel",
                 style: anchor,
-                "aria-label": "Draft sessions",
+                "aria-label": t("section.aria"),
               },
               createElement(DraftPanel, {
                 wide: true,
@@ -347,7 +351,7 @@ function createDraftFooterAction(
         {
           type: "button",
           className: "dsd-footer-trigger",
-          "aria-label": `Drafts (${drafts.length})`,
+          "aria-label": t("footer.count", { count: drafts.length }),
           "aria-expanded": open,
           onClick: () => setOpen((value) => !value),
         },
@@ -356,7 +360,11 @@ function createDraftFooterAction(
           "aria-hidden": true,
         }),
         wide
-          ? createElement("span", { className: "dsd-footer-label" }, "Drafts")
+          ? createElement(
+              "span",
+              { className: "dsd-footer-label" },
+              t("section.label"),
+            )
           : null,
         wide
           ? createElement(
@@ -397,6 +405,7 @@ export function activateWorkspaceContribution(
   const mode = new IntegrationModeSource();
   const useDrafts = draftSelector(source);
   const DraftPanel = createDraftWorkspaceContribution(ctx, source);
+  const t = ctx.locale.bind(DRAFT_LOCALE_NAMESPACE);
 
   slots.inject("sidebar.footer.action", () =>
     slots.register(
@@ -413,11 +422,11 @@ export function activateWorkspaceContribution(
     let removeTab: () => void = () => undefined;
     let removeSessionFilter: () => void = () => undefined;
 
-    const reconcile = () => {
+    const reconcile = (force = false) => {
       const registry = workspaceEntries(slots)
         .map(registryFromEntry)
         .find((value) => value !== undefined);
-      if (registry === activeRegistry) return;
+      if (!force && registry === activeRegistry) return;
       removeTab();
       removeSessionFilter();
       removeTab = () => undefined;
@@ -429,7 +438,7 @@ export function activateWorkspaceContribution(
       }
       removeTab = registry.insert({
         id: "drafts",
-        label: "Drafts",
+        label: t("section.label"),
         order: 20,
         matchSession: (sessionId) => source.getShellSnapshot().has(sessionId),
         render: (props) =>
@@ -450,11 +459,13 @@ export function activateWorkspaceContribution(
     reconcile();
     const unsubscribe =
       slots.subscribe?.("sidebar.workspaces", reconcile) ?? (() => undefined);
+    const unsubscribeLocale = ctx.locale.subscribe(() => reconcile(true));
     const timer = setInterval(reconcile, 500);
     (timer as unknown as { unref?: () => void }).unref?.();
     return () => {
       clearInterval(timer);
       unsubscribe();
+      unsubscribeLocale();
       removeTab();
       removeSessionFilter();
       mode.set("footer");

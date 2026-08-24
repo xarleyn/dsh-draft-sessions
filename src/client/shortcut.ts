@@ -33,6 +33,13 @@ export interface DraftShortcutControllerOptions {
   readonly reporter?: DraftReporter;
 }
 
+export class DraftWorkspaceRequiredError extends Error {
+  constructor() {
+    super();
+    this.name = "DraftWorkspaceRequiredError";
+  }
+}
+
 function browserShortcuts(): ShortcutSource | undefined {
   if (typeof window === "undefined") return undefined;
   return {
@@ -98,7 +105,7 @@ export class DraftShortcutController extends Service {
         this.workspaces.list.getSnapshot(),
       );
     if (target === undefined) {
-      throw new Error("cannot create a draft without a current Workspace");
+      throw new DraftWorkspaceRequiredError();
     }
     await this.composer.flush();
     const draft = await this.lifecycle.create({ workspaceId: target });

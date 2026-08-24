@@ -19,6 +19,7 @@ import { DraftSidebarView } from "./draft-sidebar-view.js";
 import { DRAFT_LOCALE_NAMESPACE, useDraftTranslate } from "./locale.js";
 import { planDraftReorder, type DraftSidebarSource } from "./sidebar.js";
 import { DraftReporter } from "./reporter.js";
+import { DraftWorkspaceRequiredError } from "./shortcut.js";
 
 type SelectorHook<State> = <Selected>(
   selector: (state: State) => Selected,
@@ -245,7 +246,14 @@ export function createDraftWorkspaceContribution(
       currentSessionId,
       workspaceNames,
       onCreate: async () => {
-        await ctx.draftShortcutController.create();
+        try {
+          await ctx.draftShortcutController.create();
+        } catch (error) {
+          if (error instanceof DraftWorkspaceRequiredError) {
+            throw new Error(t("error.workspace.required"), { cause: error });
+          }
+          throw error;
+        }
       },
       onOpen: (draft) => {
         void ctx.draftComposerBridge.open(draft).catch((error: unknown) => {

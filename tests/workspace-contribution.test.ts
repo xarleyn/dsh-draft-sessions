@@ -4,6 +4,7 @@ import {
   activateWorkspaceContribution,
   createDraftWorkspaceContribution,
 } from "../src/client/workspace-contribution.js";
+import { DraftWorkspaceRequiredError } from "../src/client/shortcut.js";
 import type { DraftSession } from "../src/shared/types.js";
 import type {
   SessionListState,
@@ -246,6 +247,21 @@ describe("workspace draft contribution", () => {
     await (element.props.onCreate as () => Promise<void>)();
 
     expect(create).toHaveBeenCalledOnce();
+  });
+
+  it("localizes the visible missing-Workspace error", async () => {
+    const ctx = {
+      draftShortcutController: {
+        create: vi.fn(async () => {
+          throw new DraftWorkspaceRequiredError();
+        }),
+      },
+    };
+    const element = renderContribution(ctx, { accept: vi.fn() });
+
+    await expect(
+      (element.props.onCreate as () => Promise<void>)(),
+    ).rejects.toThrow("Choose a Workspace before creating a draft");
   });
 
   it("restores the active composer when draft deletion is rejected", async () => {

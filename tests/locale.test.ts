@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DraftSidebarView } from "../src/client/draft-sidebar-view.js";
+import { dictionaries } from "../src/client/locale.js";
 
 afterEach(cleanup);
 
@@ -14,6 +15,12 @@ const ru = {
 } as const;
 
 describe("draft locale", () => {
+  it("includes Russian copy for the missing-Workspace error", () => {
+    expect(Reflect.get(dictionaries.ru, "error.workspace.required")).toBe(
+      "Сначала выберите рабочую область",
+    );
+  });
+
   it("renders browser copy through the supplied translator", () => {
     const t = (key: keyof typeof ru) => ru[key];
     render(

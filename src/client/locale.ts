@@ -22,6 +22,7 @@ const zh = {
   "delete.confirm": "删除这个未发送的草稿吗？",
   "action.cancel": "取消",
   "footer.count": "草稿（{count}）",
+  "error.workspace.required": "请先选择工作区",
 } as const;
 
 export type DraftLocaleKey = keyof typeof zh;
@@ -43,6 +44,7 @@ const en = {
   "delete.confirm": "Delete this unsent draft?",
   "action.cancel": "Cancel",
   "footer.count": "Drafts ({count})",
+  "error.workspace.required": "Choose a Workspace before creating a draft",
 } as const satisfies Record<DraftLocaleKey, string>;
 
 const ru = {
@@ -62,6 +64,7 @@ const ru = {
   "delete.confirm": "Удалить этот неотправленный черновик?",
   "action.cancel": "Отмена",
   "footer.count": "Черновики ({count})",
+  "error.workspace.required": "Сначала выберите рабочую область",
 } as const satisfies Record<DraftLocaleKey, string>;
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {

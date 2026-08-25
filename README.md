@@ -18,7 +18,9 @@ Persistent, unsent future conversations for [DeepSeek Harness](https://github.co
 
 Automation provides the optional cooperative tab host. When it is installed and active, Draft Sessions detects `__dshNativeTabs@1` and inserts `Drafts` between `Tasks` and `Scheduled`. There is no hard dependency on Automation and no load-order requirement.
 
-![Three independent draft sessions in a cooperative DeepSeek Harness sidebar tab](docs/images/draft-sessions-hero.png)
+<p align="center">
+  <img src="docs/images/draft-sessions-hero.png" alt="Three independent draft sessions in a cooperative DeepSeek Harness sidebar tab" />
+</p>
 
 <p align="center"><em>With Automation installed, unsent tasks live in their own Drafts tab while Tasks and Scheduled keep their existing views.</em></p>
 
@@ -26,7 +28,9 @@ Automation provides the optional cooperative tab host. When it is installed and 
 
 Without Automation or another compatible tab host, the standard workspace and session browser stays unchanged. Draft Sessions adds a footer action instead; clicking it opens the same draft list in a popover.
 
-![Draft Sessions footer action and popover on stock DeepSeek Harness](docs/images/draft-sessions-stock-fallback.jpg)
+<p align="center">
+  <img src="docs/images/draft-sessions-stock-fallback.jpg" alt="Draft Sessions footer action and popover on stock DeepSeek Harness" />
+</p>
 
 <p align="center"><em>The fallback uses the public sidebar footer slot and does not replace the stock workspace browser.</em></p>
 

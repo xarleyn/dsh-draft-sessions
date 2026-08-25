@@ -18,7 +18,9 @@
 
 Automation 可作为可选的协作式标签页宿主。安装并启用后，Draft Sessions 会检测 `__dshNativeTabs@1`，并在 `Tasks` 与 `Scheduled` 之间插入 `Drafts`。Draft Sessions 不强制依赖 Automation，也不要求特定的加载顺序。
 
-![DeepSeek Harness 协作式侧边栏标签页中的三个独立草稿会话](docs/images/draft-sessions-hero.png)
+<p align="center">
+  <img src="docs/images/draft-sessions-hero.png" alt="DeepSeek Harness 协作式侧边栏标签页中的三个独立草稿会话" />
+</p>
 
 <p align="center"><em>安装 Automation 后，未发送的任务会显示在独立的 Drafts 标签页中，Tasks 和 Scheduled 保持各自原有的视图。</em></p>
 
@@ -26,7 +28,9 @@ Automation 可作为可选的协作式标签页宿主。安装并启用后，Dra
 
 如果没有 Automation 或其他兼容的标签页宿主，标准 workspace 和 session 浏览器不会改变。Draft Sessions 会在底部添加一个操作入口；点击后，同一个草稿列表会在浮层中打开。
 
-![原生 DeepSeek Harness 中的 Draft Sessions 底部入口和浮层](docs/images/draft-sessions-stock-fallback.jpg)
+<p align="center">
+  <img src="docs/images/draft-sessions-stock-fallback.jpg" alt="原生 DeepSeek Harness 中的 Draft Sessions 底部入口和浮层" />
+</p>
 
 <p align="center"><em>该回退模式使用公开的侧边栏底部插槽，不会替换原生 workspace 浏览器。</em></p>
 

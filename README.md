@@ -1,13 +1,16 @@
 # dsh-draft-sessions
 
+[![CI](https://github.com/xarleyn/dsh-draft-sessions/actions/workflows/ci.yml/badge.svg)](https://github.com/xarleyn/dsh-draft-sessions/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/dsh-draft-sessions.svg)](https://www.npmjs.com/package/dsh-draft-sessions)
+[![npm downloads](https://img.shields.io/npm/dm/dsh-draft-sessions.svg)](https://www.npmjs.com/package/dsh-draft-sessions)
+[![Node.js](https://img.shields.io/node/v/dsh-draft-sessions.svg)](package.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Persistent, unsent future conversations for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
 `dsh-draft-sessions` is building the Cursor-like workflow where you can prepare several independent tasks, leave them unsent, and return to each task later without starting an agent.
 
-> [!IMPORTANT]
-> This repository is an early alpha. The durable draft lifecycle, composer bridge, and sidebar interactions are implemented. Release qualification across restarts, browsers, platforms, and supported DSH versions is still in progress.
-
-[Русская версия](README.ru.md) · [Specification](SPEC.md) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md)
+[Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [Specification](SPEC.md) · [Architecture](docs/architecture.md) · [Roadmap](ROADMAP.md)
 
 ## See it in action
 
@@ -35,7 +38,31 @@ Without Automation or another compatible tab host, the standard workspace and se
 
 <p align="center"><em>Create a distinct draft with <code>+</code>, then rename, duplicate, or delete it from the row menu.</em></p>
 
+## Installation
+
+Install the published npm package by name:
+
+```bash
+dsh plugin --profile web add dsh-draft-sessions
+```
+
+Or install the latest source directly from GitHub:
+
+```bash
+dsh plugin --profile web add github:xarleyn/dsh-draft-sessions
+```
+
+GitHub dependencies are built from source, so pnpm may ask you to approve this package's `prepare` script. The npm package is the recommended option when you do not want install-time build permission.
+
+To remove the plugin:
+
+```bash
+dsh plugin --profile web remove dsh-draft-sessions
+```
+
 ## The intended experience
+
+The original goal was to reproduce Cursor's inline draft experience: unsent tasks and ordinary sessions living together in one workspace tree.
 
 ```text
 my-project
@@ -44,6 +71,8 @@ my-project
 ├─ ◌ Refactor docker entrypoint   Draft
 └─ ● Implement notifications
 ```
+
+That exact layout could not be reproduced through DSH's current public sidebar APIs without replacing the stock workspace browser. Draft Sessions keeps the important behavior—independent unsent tasks, exact text restoration, and conversion on the first accepted prompt—but exposes drafts in a cooperative `Drafts` tab when one is available, or through the stock sidebar footer popover otherwise.
 
 Each draft owns a real blank DSH Session, but its unsent text is stored separately on the Host. If that blank Session disappears after a restart, a new shell can be created and rebound without losing the task.
 
@@ -101,14 +130,6 @@ Build and link the checkout into a Web profile:
 pnpm build
 dsh plugin --profile web add .
 dsh --profile web --dump-config
-```
-
-For a GitHub installation, DSH also supports `dsh plugin --profile web add github:owner/dsh-draft-sessions`. Because Git dependencies build from source, pnpm will require the user to allow this package's `prepare` script. Prefer an npm release or packed tarball when you do not want install-time build permission.
-
-Remove the linked package with:
-
-```bash
-dsh plugin --profile web remove dsh-draft-sessions
 ```
 
 ## Releases

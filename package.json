@@ -54,7 +54,9 @@
     "compatibility.json",
     "README.md",
     "README.ru.md",
+    "README.zh-CN.md",
     "docs/images/*.png",
+    "docs/images/*.jpg",
     "SPEC.md",
     "LICENSE"
   ],

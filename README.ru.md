@@ -1,13 +1,16 @@
 # dsh-draft-sessions
 
+[![CI](https://github.com/xarleyn/dsh-draft-sessions/actions/workflows/ci.yml/badge.svg)](https://github.com/xarleyn/dsh-draft-sessions/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/dsh-draft-sessions.svg)](https://www.npmjs.com/package/dsh-draft-sessions)
+[![npm downloads](https://img.shields.io/npm/dm/dsh-draft-sessions.svg)](https://www.npmjs.com/package/dsh-draft-sessions)
+[![Node.js](https://img.shields.io/node/v/dsh-draft-sessions.svg)](package.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Постоянные неотправленные будущие диалоги для [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
 Цель плагина — дать привычный по Cursor UX: можно подготовить несколько независимых задач, уйти из них без отправки и позже продолжить каждую с сохранённым текстом.
 
-> [!IMPORTANT]
-> Сейчас это ранняя alpha-версия. Durable lifecycle черновика, composer bridge и взаимодействия в sidebar уже реализованы. Release-проверки после рестартов, в браузерах, на разных ОС и поддерживаемых версиях DSH ещё в работе.
-
-[English](README.md) · [Спецификация](SPEC.md) · [Архитектура](docs/architecture.md) · [План](ROADMAP.md)
+[English](README.md) · [简体中文](README.zh-CN.md) · [Спецификация](SPEC.md) · [Архитектура](docs/architecture.md) · [План](ROADMAP.md)
 
 ## Как это выглядит
 
@@ -28,6 +31,44 @@ Automation предоставляет опциональный host для со�
 <p align="center">
   <img src="docs/images/draft-sessions-actions.png" width="360" alt="Действия с черновиком поверх sidebar без обрезки и дополнительного скролла" />
 </p>
+
+## Установка
+
+Установка опубликованного npm-пакета по имени:
+
+```bash
+dsh plugin --profile web add dsh-draft-sessions
+```
+
+Или установка свежего исходного кода напрямую с GitHub:
+
+```bash
+dsh plugin --profile web add github:xarleyn/dsh-draft-sessions
+```
+
+GitHub-зависимость собирается из исходников, поэтому pnpm может попросить разрешить `prepare`-скрипт пакета. Если выдавать разрешение на сборку при установке не хочется, используйте npm-пакет.
+
+Удаление плагина:
+
+```bash
+dsh plugin --profile web remove dsh-draft-sessions
+```
+
+## Задуманный сценарий
+
+Изначальная цель — полностью повторить inline-черновики Cursor, где неотправленные задачи и обычные sessions находятся в одном дереве workspace.
+
+```text
+my-project
+├─ ● Fix auth middleware
+├─ ◌ Add Grafana dashboards       Draft
+├─ ◌ Refactor docker entrypoint   Draft
+└─ ● Implement notifications
+```
+
+Точно повторить эту компоновку через текущие публичные sidebar API DSH не удалось без замены штатного workspace browser. Поэтому Draft Sessions сохраняет главное поведение — независимые неотправленные задачи, точное восстановление текста и превращение в обычную Session после первого принятого prompt, — но показывает черновики в совместной вкладке `Drafts`, если она доступна, или в popover штатного sidebar footer.
+
+Каждый draft связан с реальной blank Session DSH, а его неотправленный текст отдельно хранится на Host. Если blank Session исчезнет после перезапуска, плагин создаст новую оболочку и привяжет её к черновику без потери текста.
 
 ## Что уже реализовано
 
@@ -75,12 +116,6 @@ pnpm check
 pnpm build
 dsh plugin --profile web add .
 dsh --profile web --dump-config
-```
-
-Удаление:
-
-```bash
-dsh plugin --profile web remove dsh-draft-sessions
 ```
 
 ## Релизы

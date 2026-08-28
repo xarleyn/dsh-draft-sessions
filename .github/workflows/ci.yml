@@ -106,7 +106,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download tested artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: integration-package
           path: integration-artifact
@@ -145,7 +145,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download tested artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: integration-package
           path: integration-artifact

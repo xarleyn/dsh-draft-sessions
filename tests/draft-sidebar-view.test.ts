@@ -14,9 +14,16 @@ import {
   resolveDraftDropTarget,
   type DraftSidebarViewProps,
 } from "../src/client/draft-sidebar-view.js";
+import { dictionaries, type DraftTranslate } from "../src/client/locale.js";
 import type { DraftSession } from "../src/shared/types.js";
 
 afterEach(cleanup);
+
+const translateEnglish: DraftTranslate = (key, params) =>
+  dictionaries.en[key as keyof typeof dictionaries.en].replace(
+    /\{(\w+)\}/gu,
+    (_match, name: string) => String(params?.[name]),
+  );
 
 function draft(
   id: string,
@@ -42,6 +49,7 @@ function props(
   overrides: Partial<DraftSidebarViewProps> = {},
 ): DraftSidebarViewProps {
   return {
+    t: translateEnglish,
     drafts: [draft("a", 0), draft("b", 1)],
     currentSessionId: "shell-a",
     workspaceNames: { "workspace-a": "dsh" },

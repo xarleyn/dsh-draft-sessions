@@ -2,6 +2,7 @@ import { Service, type Context } from "@deepseek-ai/cordis";
 import type { SessionId } from "@deepseek-ai/dsh-client-runtime/client";
 import type { UpdateDraftRequest } from "../shared/types.js";
 import type { DraftSession } from "../shared/types.js";
+import { DraftReporter } from "./reporter.js";
 
 type DraftListRemote = {
   list(request: {
@@ -15,17 +16,23 @@ type DraftListRemote = {
 /** Observable Host-backed draft list used by the sidebar contribution. */
 export class DraftSidebarSource extends Service {
   private readonly drafts: DraftListRemote;
+  private readonly reporter: DraftReporter;
   private snapshot: readonly DraftSession[] = [];
   private shellSnapshot: ReadonlySet<SessionId> = new Set();
   private readonly listeners = new Set<() => void>();
   private generation = 0;
 
-  constructor(ctx: Context, drafts?: DraftListRemote) {
+  constructor(
+    ctx: Context,
+    drafts?: DraftListRemote,
+    reporter = new DraftReporter(ctx),
+  ) {
     super(ctx, "draftSidebarSource");
     this.drafts = drafts ?? ctx.remote.draftSessions;
+    this.reporter = reporter;
     const refresh = () => {
       void this.refresh().catch((error: unknown) => {
-        console.error("draft sidebar refresh failed", error);
+        this.reporter.error("sidebar-refresh", error);
       });
     };
     ctx.effect(

@@ -1,11 +1,20 @@
-import { z } from "zod";
 import type {
   InvocationDescriptor,
   RemoteResult,
   TypertRemoteContribution,
   TypertRemoteNamespace,
+  TypertSchema,
 } from "@deepseek-ai/dsh-typert-protocol";
-import { draftSessionSchema, draftStateSchema } from "./host/schema.js";
+import {
+  createDraftRequestSchema,
+  deleteDraftRequestSchema,
+  deleteDraftResultSchema,
+  draftSessionsSchema,
+  draftSessionSchema,
+  listDraftsRequestSchema,
+  rebindDraftRequestSchema,
+  updateDraftRequestSchema,
+} from "./shared/schema.js";
 import type {
   CreateDraftRequest,
   DeleteDraftRequest,
@@ -16,52 +25,12 @@ import type {
   UpdateDraftRequest,
 } from "./shared/types.js";
 
-const listRequestSchema = z.strictObject({
-  workspaceId: z.string().min(1).optional(),
-});
-
-const createRequestSchema = z.strictObject({
-  workspaceId: z.string().min(1),
-  sessionId: z.string().min(1).nullable().optional(),
-  workspacePath: z.string().min(1).optional(),
-  text: z.string().optional(),
-  title: z.string().min(1).optional(),
-  order: z.number().int().nonnegative().optional(),
-  pinned: z.boolean().optional(),
-  agentPresetId: z.string().min(1).optional(),
-});
-
-const updateRequestSchema = z.strictObject({
-  id: z.string().min(1),
-  expectedRevision: z.number().int().positive(),
-  text: z.string().optional(),
-  title: z.string().min(1).nullable().optional(),
-  order: z.number().int().nonnegative().optional(),
-  pinned: z.boolean().optional(),
-  agentPresetId: z.string().min(1).nullable().optional(),
-  state: draftStateSchema.optional(),
-  lastError: z.string().min(1).nullable().optional(),
-});
-
-const deleteRequestSchema = z.strictObject({
-  id: z.string().min(1),
-  expectedRevision: z.number().int().positive().optional(),
-});
-
-const deleteResultSchema = z.strictObject({ deleted: z.boolean() });
-
-const rebindRequestSchema = z.strictObject({
-  id: z.string().min(1),
-  expectedRevision: z.number().int().positive(),
-  sessionId: z.string().min(1).nullable(),
-});
-
 function descriptor(
   method: string,
   requestType: string,
-  requestSchema: z.ZodType,
+  requestSchema: TypertSchema,
   resultType: string,
-  resultSchema: z.ZodType,
+  resultSchema: TypertSchema,
 ): InvocationDescriptor {
   return {
     id: `dsh-draft-sessions#draftSessions/${method}`,
@@ -115,35 +84,35 @@ const draftSessionsRemote = {
     descriptor(
       "list",
       "dsh-draft-sessions/types#ListDraftsRequest",
-      listRequestSchema,
+      listDraftsRequestSchema,
       "dsh-draft-sessions/types#DraftSession[]",
-      z.array(draftSessionSchema),
+      draftSessionsSchema,
     ),
     descriptor(
       "create",
       "dsh-draft-sessions/types#CreateDraftRequest",
-      createRequestSchema,
+      createDraftRequestSchema,
       "dsh-draft-sessions/types#DraftSession",
       draftSessionSchema,
     ),
     descriptor(
       "update",
       "dsh-draft-sessions/types#UpdateDraftRequest",
-      updateRequestSchema,
+      updateDraftRequestSchema,
       "dsh-draft-sessions/types#DraftSession",
       draftSessionSchema,
     ),
     descriptor(
       "delete",
       "dsh-draft-sessions/types#DeleteDraftRequest",
-      deleteRequestSchema,
+      deleteDraftRequestSchema,
       "dsh-draft-sessions/types#DeleteDraftResult",
-      deleteResultSchema,
+      deleteDraftResultSchema,
     ),
     descriptor(
       "rebind",
       "dsh-draft-sessions/types#RebindDraftRequest",
-      rebindRequestSchema,
+      rebindDraftRequestSchema,
       "dsh-draft-sessions/types#DraftSession",
       draftSessionSchema,
     ),

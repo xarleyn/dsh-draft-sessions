@@ -40,7 +40,7 @@ export function useDraftMenuPosition(
   confirmingId: string | undefined,
 ): {
   readonly actionRefs: MutableRefObject<Map<string, HTMLButtonElement>>;
-  readonly menuRef: RefObject<HTMLDivElement>;
+  readonly menuRef: RefObject<HTMLDivElement | null>;
   readonly menuPosition: DraftMenuPosition | undefined;
 } {
   const actionRefs = useRef(new Map<string, HTMLButtonElement>());

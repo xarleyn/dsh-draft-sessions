@@ -8,7 +8,7 @@ interface DraftSidebarMenuProps {
   readonly draft: DraftSession;
   readonly t: DraftTranslate;
   readonly confirming: boolean;
-  readonly menuRef: RefObject<HTMLDivElement>;
+  readonly menuRef: RefObject<HTMLDivElement | null>;
   readonly position: DraftMenuPosition | undefined;
   readonly onCancelConfirm: () => void;
   readonly onConfirmDelete: () => void;

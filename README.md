@@ -6,6 +6,19 @@
 [![Node.js](https://img.shields.io/node/v/dsh-draft-sessions.svg)](package.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+> [!IMPORTANT]
+> **This repository has been archived.**
+>
+> Development of this plugin has moved to the **[xarleyn/dsh-plugins](https://github.com/xarleyn/dsh-plugins)** monorepo, which is now the canonical home for the project.
+>
+> Please use the new repository for:
+>
+> * new releases and updates;
+> * bug reports and feature requests;
+> * pull requests and further development.
+>
+> This repository is kept read-only for historical purposes.
+
 Persistent, unsent future conversations for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
 `dsh-draft-sessions` is building the Cursor-like workflow where you can prepare several independent tasks, leave them unsent, and return to each task later without starting an agent.

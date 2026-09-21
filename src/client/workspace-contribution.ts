@@ -16,7 +16,10 @@ import {
 import { createPortal } from "react-dom";
 import type { DraftSession } from "../shared/types.js";
 import { DraftSidebarView } from "./draft-sidebar-view.js";
+import { DRAFT_LOCALE_NAMESPACE, useDraftTranslate } from "./locale.js";
 import { planDraftReorder, type DraftSidebarSource } from "./sidebar.js";
+import { DraftReporter } from "./reporter.js";
+import { DraftWorkspaceRequiredError } from "./shortcut.js";
 
 type SelectorHook<State> = <Selected>(
   selector: (state: State) => Selected,
@@ -152,6 +155,7 @@ function draftSelector(
 export function createDraftWorkspaceContribution(
   ctx: Context,
   source: DraftSidebarSource,
+  reporter = new DraftReporter(ctx),
 ): FC<DraftContributionProps> {
   return function DraftWorkspaceContribution({
     wide,
@@ -160,6 +164,7 @@ export function createDraftWorkspaceContribution(
     useSessions,
     useWorkspaces,
   }) {
+    const t = ctx.locale.bind(DRAFT_LOCALE_NAMESPACE);
     const drafts = useDrafts((value) => value);
     const currentSessionId = useSessions((state) => state.current);
     const workspaceNames = Object.fromEntries(
@@ -235,16 +240,24 @@ export function createDraftWorkspaceContribution(
     };
 
     return createElement(DraftSidebarView, {
+      t,
       surface,
       drafts,
       currentSessionId,
       workspaceNames,
       onCreate: async () => {
-        await ctx.draftShortcutController.create();
+        try {
+          await ctx.draftShortcutController.create();
+        } catch (error) {
+          if (error instanceof DraftWorkspaceRequiredError) {
+            throw new Error(t("error.workspace.required"), { cause: error });
+          }
+          throw error;
+        }
       },
       onOpen: (draft) => {
         void ctx.draftComposerBridge.open(draft).catch((error: unknown) => {
-          console.error("draft open failed", error);
+          reporter.error("draft-open", error);
         });
       },
       onRename: rename,
@@ -259,10 +272,12 @@ function createDraftFooterAction(
   ctx: Context,
   source: DraftSidebarSource,
   mode: IntegrationModeSource,
+  reporter: DraftReporter,
 ): FC<DraftFooterProps> {
-  const DraftPanel = createDraftWorkspaceContribution(ctx, source);
+  const DraftPanel = createDraftWorkspaceContribution(ctx, source, reporter);
   const useDrafts = draftSelector(source);
   return function DraftFooterAction({ wide, useSessions, useWorkspaces }) {
+    const t = useDraftTranslate(ctx);
     const integration = useSyncExternalStore(
       mode.subscribe,
       mode.getSnapshot,
@@ -321,7 +336,7 @@ function createDraftFooterAction(
                 ref: panelRef,
                 className: "dsd-footer-panel",
                 style: anchor,
-                "aria-label": "Draft sessions",
+                "aria-label": t("section.aria"),
               },
               createElement(DraftPanel, {
                 wide: true,
@@ -347,7 +362,7 @@ function createDraftFooterAction(
         {
           type: "button",
           className: "dsd-footer-trigger",
-          "aria-label": `Drafts (${drafts.length})`,
+          "aria-label": t("footer.count", { count: drafts.length }),
           "aria-expanded": open,
           onClick: () => setOpen((value) => !value),
         },
@@ -356,7 +371,11 @@ function createDraftFooterAction(
           "aria-hidden": true,
         }),
         wide
-          ? createElement("span", { className: "dsd-footer-label" }, "Drafts")
+          ? createElement(
+              "span",
+              { className: "dsd-footer-label" },
+              t("section.label"),
+            )
           : null,
         wide
           ? createElement(
@@ -392,11 +411,13 @@ function workspaceEntries(slots: ComposableSlots): readonly unknown[] {
 export function activateWorkspaceContribution(
   ctx: Context,
   source: DraftSidebarSource,
+  reporter = new DraftReporter(ctx),
 ): "activated" {
   const slots = ctx.slots as unknown as ComposableSlots;
   const mode = new IntegrationModeSource();
   const useDrafts = draftSelector(source);
-  const DraftPanel = createDraftWorkspaceContribution(ctx, source);
+  const DraftPanel = createDraftWorkspaceContribution(ctx, source, reporter);
+  const t = ctx.locale.bind(DRAFT_LOCALE_NAMESPACE);
 
   slots.inject("sidebar.footer.action", () =>
     slots.register(
@@ -405,7 +426,7 @@ export function activateWorkspaceContribution(
         id: "dsh-draft-sessions",
         order: 40,
       },
-      createDraftFooterAction(ctx, source, mode),
+      createDraftFooterAction(ctx, source, mode, reporter),
     ),
   );
   slots.inject("sidebar.workspaces", () => {
@@ -413,11 +434,11 @@ export function activateWorkspaceContribution(
     let removeTab: () => void = () => undefined;
     let removeSessionFilter: () => void = () => undefined;
 
-    const reconcile = () => {
+    const reconcile = (force = false) => {
       const registry = workspaceEntries(slots)
         .map(registryFromEntry)
         .find((value) => value !== undefined);
-      if (registry === activeRegistry) return;
+      if (!force && registry === activeRegistry) return;
       removeTab();
       removeSessionFilter();
       removeTab = () => undefined;
@@ -429,7 +450,7 @@ export function activateWorkspaceContribution(
       }
       removeTab = registry.insert({
         id: "drafts",
-        label: "Drafts",
+        label: t("section.label"),
         order: 20,
         matchSession: (sessionId) => source.getShellSnapshot().has(sessionId),
         render: (props) =>
@@ -450,11 +471,13 @@ export function activateWorkspaceContribution(
     reconcile();
     const unsubscribe =
       slots.subscribe?.("sidebar.workspaces", reconcile) ?? (() => undefined);
+    const unsubscribeLocale = ctx.locale.subscribe(() => reconcile(true));
     const timer = setInterval(reconcile, 500);
     (timer as unknown as { unref?: () => void }).unref?.();
     return () => {
       clearInterval(timer);
       unsubscribe();
+      unsubscribeLocale();
       removeTab();
       removeSessionFilter();
       mode.set("footer");

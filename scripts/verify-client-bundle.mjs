@@ -1,9 +1,13 @@
 import { readFile } from "node:fs/promises";
+import {
+  CLIENT_BUNDLE_BUDGET,
+  verifyClientBundleBudget,
+} from "./client-bundle-budget.mjs";
 
-const client = await readFile(
-  new URL("../lib/client.js", import.meta.url),
-  "utf8",
-);
+const [client, sourceMap] = await Promise.all([
+  readFile(new URL("../lib/client.js", import.meta.url), "utf8"),
+  readFile(new URL("../lib/client.js.map", import.meta.url), "utf8"),
+]);
 const draftRegistration = client.indexOf('id: "dsh-draft-sessions"');
 
 if (draftRegistration < 0) {
@@ -26,3 +30,8 @@ if (client.includes('register({ name: "sidebar.workspaces"')) {
 if (client.includes("upstream occupant")) {
   throw new Error("client bundle retains the obsolete occupant warning path");
 }
+
+const { bytes } = verifyClientBundleBudget(client, sourceMap);
+console.log(
+  `client bundle: ${bytes} / ${CLIENT_BUNDLE_BUDGET} bytes (80 KiB budget)`,
+);

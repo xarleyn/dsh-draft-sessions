@@ -16,6 +16,7 @@ import type {
   UpdateDraftRequest,
 } from "../shared/types.js";
 import type { DraftSidebarSource } from "./sidebar.js";
+import { DraftReporter } from "./reporter.js";
 
 type DraftSessionsRemote = TypertRemoteNamespace<"draftSessions">;
 type SessionsApi = Pick<IApiClient["sessions"], "create" | "list">;
@@ -69,6 +70,7 @@ export interface DraftSessionLifecycleOptions {
   readonly sessions: SessionsApi;
   readonly envelopes?: ApiEnvelopeSource;
   readonly sidebar?: Pick<DraftSidebarSource, "accept" | "remove">;
+  readonly reporter?: DraftReporter;
 }
 
 export type BeforeDraftFinalizeListener = (
@@ -111,6 +113,7 @@ export class DraftSessionLifecycle extends Service {
   private readonly sessions: SessionsApi;
   private readonly sidebar:
     Pick<DraftSidebarSource, "accept" | "remove"> | undefined;
+  private readonly reporter: DraftReporter;
   private readonly pendingPrompts = new Map<string, string>();
   private readonly beforeFinalizeListeners =
     new Set<BeforeDraftFinalizeListener>();
@@ -121,6 +124,7 @@ export class DraftSessionLifecycle extends Service {
     this.drafts = options?.drafts ?? ctx.remote.draftSessions;
     this.sessions = options?.sessions ?? ctx.connection.api.sessions;
     this.sidebar = options?.sidebar;
+    this.reporter = options?.reporter ?? new DraftReporter(ctx);
     const envelopes =
       options?.envelopes ??
       (options === undefined ? envelopeSource(ctx.connection.api) : undefined);
@@ -360,7 +364,7 @@ export class DraftSessionLifecycle extends Service {
       () => undefined,
     );
     void result.catch((error: unknown) => {
-      console.error("draft session finalization failed", error);
+      this.reporter.error("session-finalize", error);
     });
   }
 

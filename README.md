@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> **This repository is archived and read-only.** The plugin moved into the
+> [`xarleyn/dsh-plugins`](https://github.com/xarleyn/dsh-plugins) monorepo and is published as
+> [`@yadsh/dsh-draft-sessions`](https://www.npmjs.com/package/@yadsh/dsh-draft-sessions)
+> (source: [`plugins/dsh-draft-sessions`](https://github.com/xarleyn/dsh-plugins/tree/main/plugins/dsh-draft-sessions)).
+> The legacy unscoped `dsh-draft-sessions` package is superseded by `@yadsh/dsh-draft-sessions`.
+
+---
+
 # dsh-draft-sessions
 
 [![CI](https://github.com/xarleyn/dsh-draft-sessions/actions/workflows/ci.yml/badge.svg)](https://github.com/xarleyn/dsh-draft-sessions/actions/workflows/ci.yml)
